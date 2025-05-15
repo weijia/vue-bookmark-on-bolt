@@ -10,7 +10,7 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: BookmarkManager
+    redirect: '/bookmarks'
   },
   {
     path: '/bookmarks',

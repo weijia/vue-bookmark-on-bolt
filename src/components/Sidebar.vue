@@ -8,12 +8,7 @@
     </div>
     
     <nav class="sidebar-nav">
-      <router-link to="/" class="nav-item" exact>
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label" v-if="!isCollapsed">Dashboard</span>
-      </router-link>
-      
-      <router-link to="/bookmarks" class="nav-item">
+      <router-link to="/bookmarks" class="nav-item" exact>
         <span class="nav-icon">🔖</span>
         <span class="nav-label" v-if="!isCollapsed">Bookmarks</span>
       </router-link>

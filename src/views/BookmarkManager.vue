@@ -18,9 +18,7 @@
       </div>
     </div>
     
-    <div class="desktop-only">
-      <SearchBar @search="onSearch" />
-    </div>
+    <SearchBar @search="onSearch" />
     
     <div class="bookmarks-container">
       <div v-if="loading" class="loading-state">
@@ -156,9 +154,8 @@ export default {
     }
   },
   methods: {
-    onSearch({ query, tagId }) {
+    onSearch(query) {
       this.searchQuery = query
-      this.selectedTag = tagId
     },
     
     editBookmark(id) {
