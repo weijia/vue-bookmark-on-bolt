@@ -1,88 +1,122 @@
-// Initial state with some demo tags
-const initialState = {
-  tags: [
-    { id: '1', name: 'Work', color: '#3b82f6' },
-    { id: '2', name: 'Development', color: '#10b981' },
-    { id: '3', name: 'Learning', color: '#f97316' },
-    { id: '4', name: 'Personal', color: '#8b5cf6' }
-  ]
-}
+import { tagsDB } from '../../services/storage';
 
-// Load tags from localStorage if available
-const savedTags = localStorage.getItem('tags')
-const state = savedTags ? JSON.parse(savedTags) : initialState
+const state = {
+  tags: [],
+  loading: false,
+  error: null
+};
 
 const getters = {
   allTags: state => state.tags,
   
   tagById: state => id => {
-    return state.tags.find(tag => tag.id === id)
+    return state.tags.find(tag => tag.id === id);
   }
-}
+};
 
 const actions = {
-  addTag({ commit }, tagData) {
-    const tag = {
-      id: Date.now().toString(),
-      name: tagData.name,
-      color: tagData.color || '#3b82f6'
+  async loadTags({ commit }) {
+    try {
+      commit('setLoading', true);
+      const result = await tagsDB.allDocs({ include_docs: true });
+      const tags = result.rows.map(row => row.doc);
+      commit('setTags', tags);
+    } catch (error) {
+      commit('setError', error.message);
+    } finally {
+      commit('setLoading', false);
     }
-    
-    commit('addTag', tag)
-    return tag
+  },
+
+  async addTag({ commit }, tagData) {
+    try {
+      const tag = {
+        _id: Date.now().toString(),
+        id: Date.now().toString(),
+        name: tagData.name,
+        color: tagData.color || '#3b82f6',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      await tagsDB.put(tag);
+      commit('addTag', tag);
+      return tag;
+    } catch (error) {
+      commit('setError', error.message);
+      throw error;
+    }
   },
   
-  updateTag({ commit }, { id, updates }) {
-    commit('updateTag', { id, updates })
+  async updateTag({ commit }, { id, updates }) {
+    try {
+      const doc = await tagsDB.get(id);
+      const updatedTag = {
+        ...doc,
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await tagsDB.put(updatedTag);
+      commit('updateTag', { id, updatedTag });
+    } catch (error) {
+      commit('setError', error.message);
+    }
   },
   
-  deleteTag({ commit, rootState }, id) {
-    // Remove tag from all bookmarks first
-    const bookmarks = rootState.bookmarks.bookmarks
-    const updatedBookmarks = bookmarks.map(bookmark => {
-      if (bookmark.tagIds.includes(id)) {
-        return {
-          ...bookmark,
-          tagIds: bookmark.tagIds.filter(tagId => tagId !== id)
+  async deleteTag({ commit, dispatch }, id) {
+    try {
+      const doc = await tagsDB.get(id);
+      await tagsDB.remove(doc);
+      
+      // Remove tag from all bookmarks
+      const bookmarks = await dispatch('bookmarks/loadBookmarks', null, { root: true });
+      for (const bookmark of bookmarks) {
+        if (bookmark.tagIds.includes(id)) {
+          await dispatch('bookmarks/updateBookmark', {
+            id: bookmark.id,
+            updates: {
+              tagIds: bookmark.tagIds.filter(tagId => tagId !== id)
+            }
+          }, { root: true });
         }
       }
-      return bookmark
-    })
-    
-    // Update bookmarks
-    for (const bookmark of updatedBookmarks) {
-      if (!bookmark.tagIds.includes(id)) {
-        commit('bookmarks/updateBookmark', 
-          { id: bookmark.id, updatedBookmark: bookmark }, 
-          { root: true }
-        )
-      }
+      
+      commit('deleteTag', id);
+    } catch (error) {
+      commit('setError', error.message);
     }
-    
-    // Then delete the tag
-    commit('deleteTag', id)
   }
-}
+};
 
 const mutations = {
-  addTag(state, tag) {
-    state.tags.push(tag)
-    localStorage.setItem('tags', JSON.stringify(state))
+  setLoading(state, status) {
+    state.loading = status;
   },
   
-  updateTag(state, { id, updates }) {
-    const index = state.tags.findIndex(t => t.id === id)
+  setError(state, error) {
+    state.error = error;
+  },
+  
+  setTags(state, tags) {
+    state.tags = tags;
+  },
+  
+  addTag(state, tag) {
+    state.tags.push(tag);
+  },
+  
+  updateTag(state, { id, updatedTag }) {
+    const index = state.tags.findIndex(t => t.id === id);
     if (index !== -1) {
-      state.tags[index] = { ...state.tags[index], ...updates }
-      localStorage.setItem('tags', JSON.stringify(state))
+      state.tags.splice(index, 1, updatedTag);
     }
   },
   
   deleteTag(state, id) {
-    state.tags = state.tags.filter(t => t.id !== id)
-    localStorage.setItem('tags', JSON.stringify(state))
+    state.tags = state.tags.filter(t => t.id !== id);
   }
-}
+};
 
 export default {
   namespaced: true,
@@ -90,4 +124,4 @@ export default {
   getters,
   actions,
   mutations
-}
+};

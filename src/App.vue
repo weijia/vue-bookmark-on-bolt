@@ -22,7 +22,8 @@
 </template>
 
 <script>
-import Sidebar from './components/Sidebar.vue'
+import Sidebar from './components/Sidebar.vue';
+import { startSync, stopSync } from './services/storage';
 
 export default {
   name: 'App',
@@ -32,25 +33,34 @@ export default {
   data() {
     return {
       isDarkMode: false
-    }
+    };
   },
   created() {
-    const savedMode = localStorage.getItem('darkMode')
+    const savedMode = localStorage.getItem('darkMode');
     if (savedMode) {
-      this.isDarkMode = JSON.parse(savedMode)
+      this.isDarkMode = JSON.parse(savedMode);
     } else {
-      // Check if user prefers dark mode
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      this.isDarkMode = prefersDark
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      this.isDarkMode = prefersDark;
     }
+    
+    // Load initial data
+    this.$store.dispatch('bookmarks/loadBookmarks');
+    this.$store.dispatch('tags/loadTags');
+    
+    // Start sync
+    startSync();
+  },
+  beforeDestroy() {
+    stopSync();
   },
   methods: {
     toggleDarkMode() {
-      this.isDarkMode = !this.isDarkMode
-      localStorage.setItem('darkMode', JSON.stringify(this.isDarkMode))
+      this.isDarkMode = !this.isDarkMode;
+      localStorage.setItem('darkMode', JSON.stringify(this.isDarkMode));
     }
   }
-}
+};
 </script>
 
 <style>
