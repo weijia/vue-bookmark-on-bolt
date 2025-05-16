@@ -3,6 +3,19 @@
     <div class="section-header">
       <div class="header-title">
         <h1 class="desktop-only">Bookmarks</h1>
+        <!-- 新增桌面端按钮 -->
+        <div class="desktop-actions">
+          <button 
+            class="btn btn-icon view-toggle"
+            @click="toggleViewMode"
+            :title="isCompactMode ? 'Switch to detailed view' : 'Switch to compact view'"
+          >
+            {{ isCompactMode ? '📑' : '📋' }}
+          </button>
+          <button class="btn btn-icon" @click="showAddModal = true" title="Add Bookmark">
+            ➕
+          </button>
+        </div>
         <div class="mobile-actions">
           <button 
             class="btn btn-icon view-toggle"
@@ -33,7 +46,9 @@
         </button>
       </div>
       
-      <div v-else class="bookmarks-list">
+      <div v-else 
+           class="bookmarks-list" 
+           :data-view-mode="isCompactMode ? 'compact' : 'detailed'">
         <BookmarkItem 
           v-for="bookmark in displayedBookmarks"
           :key="bookmark.id"
@@ -215,6 +230,21 @@ export default {
   font-weight: 600;
 }
 
+.desktop-actions {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .desktop-actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+  
+  .mobile-actions {
+    display: none;
+  }
+}
+
 .mobile-actions {
   display: none;
 }
@@ -250,12 +280,22 @@ export default {
 }
 
 @media (min-width: 769px) {
+
   /* 电脑端 grid 布局 */
   .bookmarks-list {
     display: grid;
-    /* 调整最小宽度，确保能容纳按钮 */
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+
     gap: var(--space-3);
+  }
+
+  /* 紧凑模式布局 */
+  .bookmarks-list[data-view-mode="compact"] {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  /* 详细模式布局 */
+  .bookmarks-list[data-view-mode="detailed"] {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   }
 }
 

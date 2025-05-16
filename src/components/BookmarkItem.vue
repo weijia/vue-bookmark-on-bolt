@@ -410,9 +410,8 @@ export default {
 
 @media (min-width: 769px) {
   .bookmark-item {
-    /* 确保容器有足够空间 */
-    position: relative;
-    min-width: 300px; 
+    /* 详细模式下增加最小宽度 */
+    min-width: 300px;
   }
 
   .swipe-actions {
