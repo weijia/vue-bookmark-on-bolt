@@ -1,7 +1,7 @@
 <template>
   <div 
     class="bookmark-item" 
-    :class="{ 'invalid': !isForceValid && !bookmark.isValid, 'compact': isCompact }"
+    :class="{ 'invalid': !isForceValid && bookmark.isValid, 'compact': isCompact }"
     @touchstart="isMobile() ? touchStart($event) : null"
     @touchmove="isMobile() ? touchMove($event) : null"
     @touchend="isMobile() ? touchEnd() : null"
@@ -405,6 +405,28 @@ export default {
   
   .swipe-actions {
     display: flex;
+  }
+}
+
+@media (min-width: 769px) {
+  .bookmark-item {
+    /* 确保容器有足够空间 */
+    position: relative;
+    min-width: 300px; 
+  }
+
+  .swipe-actions {
+    display: flex;
+    position: static; 
+    transform: none; 
+    transition: none;
+    gap: 8px; 
+    margin-top: 8px; 
+  }
+
+  .swipe-btn {
+    padding: 4px 8px; 
+    border-radius: 4px; 
   }
 }
 </style>

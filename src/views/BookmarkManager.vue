@@ -243,9 +243,20 @@ export default {
 }
 
 .bookmarks-list {
+  /* 默认移动端布局 */
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+@media (min-width: 769px) {
+  /* 电脑端 grid 布局 */
+  .bookmarks-list {
+    display: grid;
+    /* 调整最小宽度，确保能容纳按钮 */
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+    gap: var(--space-3);
+  }
 }
 
 .loading-state {
