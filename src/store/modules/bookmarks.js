@@ -63,10 +63,10 @@ const actions = {
   async addBookmark({ commit }, bookmarkData) {
     try {
       commit('setLoading', true);
-      
+      const uuid = crypto.randomUUID(); // 生成 UUID
       const bookmark = {
-        _id: Date.now().toString(),
-        id: Date.now().toString(),
+        _id: uuid, // 使用 UUID 作为 _id
+        id: uuid, // 使用 UUID 作为 id
         title: bookmarkData.title,
         url: bookmarkData.url,
         description: bookmarkData.description || '',

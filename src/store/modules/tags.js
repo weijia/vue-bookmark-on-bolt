@@ -30,9 +30,10 @@ const actions = {
 
   async addTag({ commit }, tagData) {
     try {
+      const uuid = crypto.randomUUID(); // 生成 UUID
       const tag = {
-        _id: Date.now().toString(),
-        id: Date.now().toString(),
+        _id: uuid, // 使用 UUID 作为 _id
+        id: uuid, // 使用 UUID 作为 id
         name: tagData.name,
         color: tagData.color || '#3b82f6',
         createdAt: new Date().toISOString(),
