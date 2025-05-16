@@ -37,7 +37,7 @@
         </div>
       </div>
 
-      <div class="setting-item">
+      <div class="setting-item" id="remoteStorageElementId">
         <div class="setting-info">
           <h3 class="setting-name">RemoteStorage</h3>
           <p class="setting-description">Connect to your RemoteStorage provider</p>
@@ -226,8 +226,10 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
-import { remoteStorage, configurePouchDBSync, getSyncStatus } from '../services/storage'
+import RemoteStorage from 'remotestoragejs';
+import Widget from 'remotestorage-widget';
+import { mapGetters } from 'vuex';
+import { configurePouchDBSync, getSyncStatus } from '../services/storage';
 
 export default {
   name: 'Settings',
@@ -277,6 +279,18 @@ export default {
 
     // Start monitoring sync status
     this.monitorSyncStatus()
+  },
+  mounted() {
+    // 初始化 RemoteStorage
+    const remoteStorage = new RemoteStorage();
+    // 声明访问权限
+    remoteStorage.access.claim('bookmarks', 'rw');
+    remoteStorage.access.claim('tags', 'rw');
+    // 初始化 RemoteStorage Widget
+    const widget = new Widget(remoteStorage);
+    // 挂载 Widget
+    //console.log(this.$refs.remoteStorageElement)
+    widget.attach('remoteStorageElementId');
   },
   methods: {
     toggleDarkMode() {
