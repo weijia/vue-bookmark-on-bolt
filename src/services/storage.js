@@ -29,7 +29,7 @@ const remoteStorage = new RemoteStorage({
             favicon: { type: 'string' },
             tagIds: { type: 'array', items: { type: 'string' } },
             createdAt: { type: 'string' },
-            lastVisited: { type: 'string' },
+            lastVisited: {"type": ["string", "null"]}, // 这里允许 'title' 字段为 string 或 null
             isValid: { type: 'boolean' },
             visitCount: { type: 'number' }
           }
@@ -38,14 +38,35 @@ const remoteStorage = new RemoteStorage({
         return {
           exports: {
             async save(bookmark) {
-              await privateClient.storeObject('bookmark', bookmark.id, bookmark);
+              try {
+                console.log('Saving bookmark with parameters:', 'bookmark', bookmark.id, bookmark);
+                await privateClient.storeObject('bookmark', bookmark.id, bookmark);
+                console.log('Bookmark saved successfully:', bookmark);
+              } catch (error) {
+                if (error.name === 'NetworkError') {
+                  console.error('Network error while saving bookmark:', error);
+                } else if (error.name === 'ValidationError') {
+                  console.error('Validation error while saving bookmark:', error);
+                } else {
+                  console.error('Unexpected error while saving bookmark:', error);
+                }
+                console.error('Bookmark data:', bookmark);
+              }
             },
             async get(id) {
               return await privateClient.getObject(id);
             },
             async list() {
-              const bookmarks = await privateClient.getAll('');
-              return Object.values(bookmarks);
+              try {
+                // 尝试获取所有书签
+                const bookmarks = await privateClient.getAll('');
+                return Object.values(bookmarks);
+              } catch (error) {
+                // 捕获异常并打印错误信息
+                console.error('Error fetching bookmarks from RemoteStorage:', error);
+                // 返回空数组
+                return [];
+              }
             }
           }
         };
@@ -82,9 +103,13 @@ const remoteStorage = new RemoteStorage({
   ]
 });
 
+// 声明访问权限
+remoteStorage.access.claim('bookmarks', 'rw');
+remoteStorage.access.claim('tags', 'rw');
+
 // Initialize RemoteStorage Widget
-const widget = new Widget(remoteStorage);
-widget.attach();
+// const widget = new Widget(remoteStorage);
+// widget.attach();
 
 
 // Sync functions
@@ -213,6 +238,16 @@ let syncInterval;
 
 // Start sync process
 function startSync(intervalMinutes = 5) {
+  // Initial sync
+  syncBookmarks();
+  syncTags();
+  
+  // Set up periodic sync every 5 minutes
+  syncInterval = setInterval(() => {
+    syncBookmarks();
+    syncTags();
+  }, 5 * 60 * 1000);
+
   // 检查是否已经配置
   if (!isConfigured) {
     console.warn('configurePouchDBSync must be called before startSync. Sync process will not start.');
@@ -246,15 +281,7 @@ function startSync(intervalMinutes = 5) {
     live: true,
     retry: true
   });
-  // Initial sync
-  syncBookmarks();
-  syncTags();
-  
-  // Set up periodic sync every 5 minutes
-  syncInterval = setInterval(() => {
-    syncBookmarks();
-    syncTags();
-  }, 5 * 60 * 1000);
+
 }
 
 

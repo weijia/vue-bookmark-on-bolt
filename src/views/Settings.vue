@@ -286,6 +286,19 @@ export default {
     // 声明访问权限
     remoteStorage.access.claim('bookmarks', 'rw');
     remoteStorage.access.claim('tags', 'rw');
+
+    // 获取 URL 中的 access_token
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get('access_token');
+
+    if (accessToken) {
+      // 让 remotestorage 处理 access_token
+      remoteStorage.remote.connect(accessToken);
+      // 可考虑移除 URL 中的 access_token，避免泄露
+      const newUrl = window.location.href.split('?')[0];
+      window.history.replaceState({}, document.title, newUrl);
+    }
+
     // 初始化 RemoteStorage Widget
     const widget = new Widget(remoteStorage);
     // 挂载 Widget
