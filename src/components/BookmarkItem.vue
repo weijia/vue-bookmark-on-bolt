@@ -1,7 +1,7 @@
 <template>
   <div 
     class="bookmark-item" 
-    :class="{ 'invalid': !bookmark.isValid, 'compact': isCompact }"
+    :class="{ 'invalid': !isForceValid && !bookmark.isValid, 'compact': isCompact }"
     @touchstart="isMobile() ? touchStart($event) : null"
     @touchmove="isMobile() ? touchMove($event) : null"
     @touchend="isMobile() ? touchEnd() : null"
@@ -107,6 +107,10 @@ export default {
       required: true
     },
     isCompact: {
+      type: Boolean,
+      default: false
+    },
+    isForceValid: {
       type: Boolean,
       default: false
     }

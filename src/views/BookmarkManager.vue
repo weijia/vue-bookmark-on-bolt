@@ -39,13 +39,14 @@
           :key="bookmark.id"
           :bookmark="bookmark"
           :isCompact="isCompactMode"
+          :isForceValid="isForceValid"
           @edit="editBookmark"
           @delete="confirmDelete"
         />
       </div>
     </div>
     
-    <div v-if="hasInvalidBookmarks" class="invalid-notice">
+    <div v-if="!isForceValid || !hasInvalidBookmarks" class="invalid-notice">
       <p>
         <span class="notice-icon">⚠️</span>
         You have {{ invalidCount }} invalid bookmark(s).
@@ -117,7 +118,8 @@ export default {
       searchQuery: '',
       selectedTag: null,
       loading: false,
-      isCompactMode: true // Default to compact mode
+      isCompactMode: true, // Default to compact mode
+      isForceValid: true // Force all bookmark items to be treated as valid
     }
   },
   computed: {

@@ -40,6 +40,7 @@
       <div class="form-group">
         <label>Tags</label>
         <div class="tags-selector">
+          <!-- 显示已有标签 -->
           <div 
             v-for="tag in allTags" 
             :key="tag.id"
@@ -56,6 +57,25 @@
               :style="{ backgroundColor: tag.color }"
             ></span>
             <span class="tag-name">{{ tag.name }}</span>
+          </div>
+          <!-- 新增创建标签的输入框和按钮 -->
+          <div class="new-tag-input">
+            <input 
+              type="text" 
+              v-model="newTagName" 
+              placeholder="New tag name"
+            />
+            <input 
+              type="color" 
+              v-model="newTagColor"
+            />
+            <button 
+              type="button" 
+              class="btn btn-sm" 
+              @click="createNewTag"
+            >
+              Add Tag
+            </button>
           </div>
         </div>
       </div>
@@ -81,7 +101,7 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapGetters, mapActions } from 'vuex'
 import { checkUrlValidity } from '../utils/urlValidator'
 
 export default {
@@ -101,7 +121,9 @@ export default {
         tagIds: []
       },
       loading: false,
-      urlError: null
+      urlError: null,
+      newTagName: '', // 新增：新标签名称
+      newTagColor: '#000000' // 新增：新标签颜色
     }
   },
   computed: {
@@ -128,6 +150,7 @@ export default {
   },
   methods: {
     async validateUrl() {
+      return
       if (!this.form.url) return
       
       try {
@@ -154,6 +177,21 @@ export default {
         this.form.tagIds = this.form.tagIds.filter(id => id !== tagId)
       } else {
         this.form.tagIds.push(tagId)
+      }
+    },
+    // 新增：创建新标签的方法
+    async createNewTag() {
+      if (!this.newTagName.trim()) return
+
+      try {
+        const newTag = await this.$store.dispatch('tags/addTag', {
+          name: this.newTagName.trim(),
+          color: this.newTagColor
+        })
+        this.form.tagIds.push(newTag.id)
+        this.newTagName = ''
+      } catch (error) {
+        console.error('Error creating tag:', error)
       }
     },
     
@@ -281,5 +319,26 @@ input:focus, textarea:focus {
   .form-actions button {
     width: 100%;
   }
+}
+
+.new-tag-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.new-tag-input input[type="text"] {
+  flex: 1;
+}
+
+.new-tag-input input[type="color"] {
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+}
+
+.new-tag-input button {
+  padding: 4px 8px;
 }
 </style>
