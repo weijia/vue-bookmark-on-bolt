@@ -1,6 +1,7 @@
 import PouchDB from 'pouchdb-browser';
 import RemoteStorage from 'remotestoragejs';
 import Widget from 'remotestorage-widget';
+import store from '../store'; // 导入 Vuex store
 
 // Initialize PouchDB
 const bookmarksDB = new PouchDB('bookmarks');
@@ -130,17 +131,39 @@ async function syncBookmarks() {
       if (localUpdatedAt > remoteUpdatedAt) {
         await remoteStorage.bookmarks.save(localBookmark);
       } else if (remoteUpdatedAt > localUpdatedAt) {
-        await bookmarksDB.put({
-          ...remoteBookmark,
-          _id: remoteBookmark.id,
-          _rev: localBookmark._rev
-        });
+        try {
+          await bookmarksDB.put({
+            ...remoteBookmark,
+            _id: remoteBookmark.id,
+            _rev: localBookmark._rev
+          });
+          console.log('Bookmark updated successfully:', remoteBookmark.id);
+        } catch (error) {
+          console.error('Error updating bookmark:', remoteBookmark.id, error);
+          // 可以在这里添加更多的错误处理逻辑，比如重试
+        }
       }
     } else {
-      await bookmarksDB.put({
-        ...remoteBookmark,
-        _id: remoteBookmark.id
-      });
+      try {
+        // 使用 bulkDocs 方法并设置 new_edits: false
+        const result = await bookmarksDB.bulkDocs([{
+          ...remoteBookmark,
+          _id: remoteBookmark.id,
+          // 假设 remoteBookmark 包含 _rev 字段，如果没有，需要根据实际情况处理
+          _rev: remoteBookmark._rev 
+        }], { new_edits: false });
+
+        // 检查 result 数组是否为空
+        if (result.length > 0 && result[0].ok) {
+          console.log('Bookmark added successfully with specified rev:', remoteBookmark.id);
+        } else {
+          const errorMessage = result.length > 0 ? result[0].error : 'Empty result from bulkDocs';
+          console.warn('Failed to add bookmark:', errorMessage);
+        }
+      } catch (error) {
+        console.error('Error adding bookmark:', remoteBookmark.id, error);
+        // 可以在这里添加更多的错误处理逻辑，比如重试
+      }
     }
   }
 
@@ -151,6 +174,12 @@ async function syncBookmarks() {
       await remoteStorage.bookmarks.save(row.doc);
     }
   }
+
+  // 同步完成后，获取最新的本地书签数据
+  const updatedLocalBookmarks = await bookmarksDB.allDocs({ include_docs: true });
+  const bookmarksArray = updatedLocalBookmarks.rows.map(row => row.doc);
+  // 提交 mutation 更新 Vuex 状态
+  store.commit('bookmarks/setBookmarks', bookmarksArray);
 }
 
 async function syncTags() {
@@ -168,17 +197,39 @@ async function syncTags() {
       if (localUpdatedAt > remoteUpdatedAt) {
         await remoteStorage.tags.save(localTag);
       } else if (remoteUpdatedAt > localUpdatedAt) {
-        await tagsDB.put({
-          ...remoteTag,
-          _id: remoteTag.id,
-          _rev: localTag._rev
-        });
+        try {
+          await tagsDB.put({
+            ...remoteTag,
+            _id: remoteTag.id,
+            _rev: localTag._rev
+          });
+          // 更新单个标签时，提交更新到 Vuex
+          store.commit('tags/updateTag', { id: remoteTag.id, updatedTag: { ...remoteTag, _rev: localTag._rev } });
+        } catch (error) {
+          console.error('Error updating tag:', remoteTag.id, error);
+        }
       }
     } else {
-      await tagsDB.put({
-        ...remoteTag,
-        _id: remoteTag.id
-      });
+      try {
+        // 使用 bulkDocs 方法并设置 new_edits: false
+        const result = await tagsDB.bulkDocs([{
+          ...remoteTag,
+          _id: remoteTag.id,
+          // 假设 remoteTag 包含 _rev 字段，如果没有，需要根据实际情况处理
+          _rev: remoteTag._rev 
+        }], { new_edits: false });
+
+        // 检查 result 数组是否为空
+        if (result.length > 0 && result[0].ok) {
+          console.log('Tag added successfully with specified rev:', remoteTag.id);
+        } else {
+          const errorMessage = result.length > 0 ? result[0].error : 'Empty result from bulkDocs';
+          console.error('Failed to add tag:', errorMessage);
+        }
+      } catch (error) {
+        console.error('Error adding tag:', remoteTag.id, error);
+        // 可以在这里添加更多的错误处理逻辑，比如重试
+      }
     }
   }
 
@@ -189,6 +240,12 @@ async function syncTags() {
       await remoteStorage.tags.save(row.doc);
     }
   }
+
+  // 同步完成后，获取最新的本地标签数据
+  const updatedLocalTags = await tagsDB.allDocs({ include_docs: true });
+  const tagsArray = updatedLocalTags.rows.map(row => row.doc);
+  // 提交 mutation 更新 Vuex 状态
+  store.commit('tags/setTags', tagsArray);
 }
 
 // Configure PouchDB sync
