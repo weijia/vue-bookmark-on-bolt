@@ -6,6 +6,13 @@ import Widget from 'remotestorage-widget';
 const bookmarksDB = new PouchDB('bookmarks');
 const tagsDB = new PouchDB('tags');
 
+let remoteBookmarksDB = null;
+let remoteTagsDB = null;
+let syncHandler = null;
+let lastSyncTime = null;
+let syncStatus = 'disconnected';
+let isConfigured = false; 
+
 // Initialize RemoteStorage
 const remoteStorage = new RemoteStorage({
   modules: [
@@ -78,6 +85,7 @@ const remoteStorage = new RemoteStorage({
 // Initialize RemoteStorage Widget
 const widget = new Widget(remoteStorage);
 widget.attach();
+
 
 // Sync functions
 async function syncBookmarks() {
@@ -158,10 +166,86 @@ async function syncTags() {
   }
 }
 
+// Configure PouchDB sync
+export async function configurePouchDBSync(config) {
+  try {
+    // Stop existing sync if any
+    if (syncHandler) {
+      syncHandler.cancel();
+    }
+
+    // Create remote connections
+    const remoteBookmarksUrl = `${config.remoteUrl}/bookmarks`;
+    const remoteTagsUrl = `${config.remoteUrl}/tags`;
+
+    const options = {};
+    if (config.username && config.password) {
+      options.auth = {
+        username: config.username,
+        password: config.password
+      };
+    }
+
+    remoteBookmarksDB = new PouchDB(remoteBookmarksUrl, options);
+    remoteTagsDB = new PouchDB(remoteTagsUrl, options);
+
+    // Test connection
+    await remoteBookmarksDB.info();
+    await remoteTagsDB.info();
+
+    // Start sync
+    if (config.enableSync) {
+      startSync(config.syncInterval);
+    }
+
+    syncStatus = 'connected';
+    lastSyncTime = new Date();
+    isConfigured = true; 
+  } catch (error) {
+    console.error('PouchDB sync configuration error:', error);
+    syncStatus = 'error';
+    throw error;
+  }
+}
+
 // Set up periodic sync
 let syncInterval;
 
-function startSync() {
+// Start sync process
+function startSync(intervalMinutes = 5) {
+  // 检查是否已经配置
+  if (!isConfigured) {
+    console.warn('configurePouchDBSync must be called before startSync. Sync process will not start.');
+    syncStatus = 'not_configured';
+    return;
+  }
+  // Cancel existing sync if any
+  if (syncHandler) {
+    syncHandler.cancel();
+  }
+
+  // Start new sync
+  syncHandler = PouchDB.sync(bookmarksDB, remoteBookmarksDB, {
+    live: true,
+    retry: true
+  }).on('change', (info) => {
+    console.log('Sync change:', info);
+    lastSyncTime = new Date();
+    syncStatus = 'syncing';
+  }).on('complete', () => {
+    console.log('Sync completed');
+    lastSyncTime = new Date();
+    syncStatus = 'connected';
+  }).on('error', (err) => {
+    console.error('Sync error:', err);
+    syncStatus = 'error';
+  });
+
+  // Also sync tags
+  PouchDB.sync(tagsDB, remoteTagsDB, {
+    live: true,
+    retry: true
+  });
   // Initial sync
   syncBookmarks();
   syncTags();
@@ -173,16 +257,29 @@ function startSync() {
   }, 5 * 60 * 1000);
 }
 
-function stopSync() {
+
+// Stop sync process
+export function stopSync() {
+  if (syncHandler) {
+    syncHandler.cancel();
+  }
   if (syncInterval) {
     clearInterval(syncInterval);
   }
+  syncStatus = 'disconnected';
+}
+
+// Get current sync status
+export function getSyncStatus() {
+  return {
+    status: syncStatus,
+    lastSync: lastSyncTime
+  };
 }
 
 export {
   bookmarksDB,
   tagsDB,
   remoteStorage,
-  startSync,
-  stopSync
+  startSync
 };

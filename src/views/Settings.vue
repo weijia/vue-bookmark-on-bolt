@@ -18,6 +18,53 @@
         </div>
       </div>
     </div>
+
+    <div class="card settings-section">
+      <h2 class="section-title">Sync Settings</h2>
+      
+      <div class="setting-item">
+        <div class="setting-info">
+          <h3 class="setting-name">PouchDB Remote Sync</h3>
+          <p class="setting-description">Configure remote CouchDB/PouchDB server for syncing</p>
+        </div>
+        <div class="setting-control">
+          <button 
+            class="btn btn-outline" 
+            @click="showPouchDBModal = true"
+          >
+            Configure
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <h3 class="setting-name">RemoteStorage</h3>
+          <p class="setting-description">Connect to your RemoteStorage provider</p>
+        </div>
+        <div class="setting-control">
+          <button 
+            class="btn btn-outline" 
+            @click="showRemoteStorageWidget"
+          >
+            Configure
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <h3 class="setting-name">Sync Status</h3>
+          <p class="setting-description">Current sync status and last sync time</p>
+        </div>
+        <div class="setting-control">
+          <div class="sync-status">
+            <span :class="['status-dot', syncStatus]"></span>
+            {{ syncStatusText }}
+          </div>
+        </div>
+      </div>
+    </div>
     
     <div class="card settings-section">
       <h2 class="section-title">Data Management</h2>
@@ -87,6 +134,79 @@
         </div>
       </div>
     </div>
+
+    <!-- PouchDB Configuration Modal -->
+    <div class="modal" v-if="showPouchDBModal">
+      <div class="modal-backdrop" @click="showPouchDBModal = false"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>PouchDB Remote Sync Configuration</h2>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="savePouchDBConfig">
+            <div class="form-group">
+              <label for="remoteUrl">Remote URL</label>
+              <input 
+                type="url" 
+                id="remoteUrl"
+                v-model="pouchDBConfig.remoteUrl"
+                placeholder="https://example.com/db"
+                required
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input 
+                type="text" 
+                id="username"
+                v-model="pouchDBConfig.username"
+                placeholder="Username"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input 
+                type="password" 
+                id="password"
+                v-model="pouchDBConfig.password"
+                placeholder="Password"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>
+                <input 
+                  type="checkbox"
+                  v-model="pouchDBConfig.enableSync"
+                /> Enable automatic sync
+              </label>
+            </div>
+
+            <div class="form-group" v-if="pouchDBConfig.enableSync">
+              <label for="syncInterval">Sync Interval (minutes)</label>
+              <input 
+                type="number" 
+                id="syncInterval"
+                v-model="pouchDBConfig.syncInterval"
+                min="1"
+                max="60"
+              />
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="btn btn-outline" @click="showPouchDBModal = false">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">
+                Save Configuration
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
     
     <!-- Reset Confirmation Modal -->
     <div class="modal" v-if="showResetModal">
@@ -107,6 +227,7 @@
 
 <script>
 import { mapGetters } from 'vuex'
+import { remoteStorage, configurePouchDBSync, getSyncStatus } from '../services/storage'
 
 export default {
   name: 'Settings',
@@ -114,26 +235,53 @@ export default {
     return {
       isDarkMode: false,
       loading: false,
-      showResetModal: false
+      showResetModal: false,
+      showPouchDBModal: false,
+      pouchDBConfig: {
+        remoteUrl: '',
+        username: '',
+        password: '',
+        enableSync: true,
+        syncInterval: 5
+      },
+      syncStatus: 'disconnected', // disconnected, syncing, connected, error
+      lastSyncTime: null
     }
   },
   computed: {
     ...mapGetters({
       allBookmarks: 'bookmarks/allBookmarks',
       allTags: 'tags/allTags'
-    })
+    }),
+    syncStatusText() {
+      const statusMap = {
+        disconnected: 'Not connected',
+        syncing: 'Syncing...',
+        connected: this.lastSyncTime ? `Last synced: ${this.formatTime(this.lastSyncTime)}` : 'Connected',
+        error: 'Sync error'
+      }
+      return statusMap[this.syncStatus]
+    }
   },
   created() {
     const savedMode = localStorage.getItem('darkMode')
     if (savedMode) {
       this.isDarkMode = JSON.parse(savedMode)
     }
+
+    // Load PouchDB config
+    const savedConfig = localStorage.getItem('pouchDBConfig')
+    if (savedConfig) {
+      this.pouchDBConfig = JSON.parse(savedConfig)
+    }
+
+    // Start monitoring sync status
+    this.monitorSyncStatus()
   },
   methods: {
     toggleDarkMode() {
       this.isDarkMode = !this.isDarkMode
       localStorage.setItem('darkMode', JSON.stringify(this.isDarkMode))
-      // Update app-wide dark mode
       this.$root.$children[0].isDarkMode = this.isDarkMode
     },
     
@@ -184,10 +332,7 @@ export default {
             this.$store.dispatch('bookmarks/importBookmarks', data.bookmarks)
           }
           
-          // Reset the file input
           event.target.value = null
-          
-          // Show success message
           alert('Import successful!')
         } catch (error) {
           console.error('Import error:', error)
@@ -202,12 +347,47 @@ export default {
     },
     
     resetApplication() {
-      // Clear localStorage
       localStorage.removeItem('bookmarks')
       localStorage.removeItem('tags')
-      
-      // Reload the page to reset the app state
       window.location.reload()
+    },
+
+    async savePouchDBConfig() {
+      try {
+        await configurePouchDBSync(this.pouchDBConfig)
+        localStorage.setItem('pouchDBConfig', JSON.stringify(this.pouchDBConfig))
+        this.showPouchDBModal = false
+        this.updateSyncStatus()
+      } catch (error) {
+        console.error('Failed to configure PouchDB sync:', error)
+        alert('Failed to configure sync. Please check your settings and try again.')
+      }
+    },
+
+    showRemoteStorageWidget() {
+      remoteStorage.connect()
+    },
+
+    monitorSyncStatus() {
+      // Update status initially
+      this.updateSyncStatus()
+
+      // Set up periodic status checks
+      setInterval(() => {
+        this.updateSyncStatus()
+      }, 30000) // Check every 30 seconds
+    },
+
+    async updateSyncStatus() {
+      const status = await getSyncStatus()
+      this.syncStatus = status.status
+      this.lastSyncTime = status.lastSync
+    },
+
+    formatTime(timestamp) {
+      if (!timestamp) return ''
+      const date = new Date(timestamp)
+      return date.toLocaleString()
     }
   }
 }
@@ -281,6 +461,52 @@ export default {
   background-color: var(--primary-dark);
 }
 
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.disconnected {
+  background-color: var(--text-tertiary);
+}
+
+.status-dot.syncing {
+  background-color: var(--warning-color);
+  animation: pulse 1s infinite;
+}
+
+.status-dot.connected {
+  background-color: var(--success-color);
+}
+
+.status-dot.error {
+  background-color: var(--error-color);
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .import-label {
   position: relative;
   display: inline-block;
@@ -342,18 +568,44 @@ export default {
   width: 90%;
   max-width: 500px;
   z-index: 101;
-}
-
-.delete-confirmation {
   background-color: var(--card-color);
   border-radius: 12px;
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.modal-body {
   padding: var(--space-4);
 }
 
-.delete-confirmation h2 {
-  margin-top: 0;
+.form-group {
   margin-bottom: var(--space-3);
-  color: var(--error-color);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group input[type="password"],
+.form-group input[type="number"] {
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.9rem;
 }
 
 .modal-actions {
