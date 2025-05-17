@@ -73,6 +73,7 @@ export default {
   
   .main-content {
     height: auto;
+    padding: 0;
   }
 }
 </style>
