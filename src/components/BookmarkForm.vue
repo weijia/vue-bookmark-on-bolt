@@ -39,44 +39,52 @@
       
       <div class="form-group">
         <label>Tags</label>
-        <div class="tags-selector">
-          <!-- 显示已有标签 -->
-          <div 
-            v-for="tag in allTags" 
-            :key="tag.id"
-            class="tag-option"
-            :class="{ 'selected': form.tagIds.includes(tag.id) }"
-            :style="{ 
-              borderColor: tag.color,
-              backgroundColor: form.tagIds.includes(tag.id) ? tag.color + '20' : 'transparent'
-            }"
-            @click="toggleTag(tag.id)"
-          >
-            <span 
-              class="tag-color" 
-              :style="{ backgroundColor: tag.color }"
-            ></span>
-            <span class="tag-name">{{ tag.name }}</span>
-          </div>
-          <!-- 新增创建标签的输入框和按钮 -->
-          <div class="new-tag-input">
-            <input 
-              type="text" 
-              v-model="newTagName" 
-              placeholder="New tag name"
-            />
-            <input 
-              type="color" 
-              v-model="newTagColor"
-            />
-            <button 
-              type="button" 
-              class="btn btn-sm" 
-              @click="createNewTag"
+        <input
+          type="text"
+          v-model="tagSearch"
+          placeholder="Search tags..."
+          class="tag-search"
+        />
+        <div class="tags-container">
+          <div class="tags-selector">
+            <!-- 显示已有标签 -->
+            <div 
+              v-for="tag in filteredTags" 
+              :key="tag.id"
+              class="tag-option"
+              :class="{ 'selected': form.tagIds.includes(tag.id) }"
+              :style="{ 
+                borderColor: tag.color,
+                backgroundColor: form.tagIds.includes(tag.id) ? tag.color + '20' : 'transparent'
+              }"
+              @click="toggleTag(tag.id)"
             >
-              Add Tag
-            </button>
+              <span 
+                class="tag-color" 
+                :style="{ backgroundColor: tag.color }"
+              ></span>
+              <span class="tag-name">{{ tag.name }}</span>
+            </div>
           </div>
+        </div>
+        <!-- 新增创建标签的输入框和按钮 -->
+        <div class="new-tag-input">
+          <input 
+            type="text" 
+            v-model="newTagName" 
+            placeholder="New tag name"
+          />
+          <input 
+            type="color" 
+            v-model="newTagColor"
+          />
+          <button 
+            type="button" 
+            class="btn btn-sm" 
+            @click="createNewTag"
+          >
+            Add Tag
+          </button>
         </div>
       </div>
       
@@ -123,7 +131,8 @@ export default {
       loading: false,
       urlError: null,
       newTagName: '', // 新增：新标签名称
-      newTagColor: '#000000' // 新增：新标签颜色
+      newTagColor: '#000000', // 新增：新标签颜色
+      tagSearch: '' // 新增：标签搜索词
     }
   },
   computed: {
@@ -133,6 +142,12 @@ export default {
     }),
     isEdit() {
       return !!this.bookmarkId
+    },
+    filteredTags() {
+      const searchTerm = this.tagSearch.toLowerCase();
+      return this.allTags.filter(tag => 
+        tag.name.toLowerCase().includes(searchTerm)
+      );
     }
   },
   created() {
@@ -269,10 +284,27 @@ input:focus, textarea:focus {
   margin-top: var(--space-1);
 }
 
+.tags-container {
+  margin-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+  background-color: var(--surface-color);
+}
+
 .tags-selector {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-height: 40px;
+}
+
+.tag-search {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px 12px;
 }
 
 .tag-option {

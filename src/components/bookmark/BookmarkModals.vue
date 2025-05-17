@@ -1,13 +1,16 @@
 <template>
   <div>
     <!-- 添加/编辑书签表单 -->
-    <BookmarkForm
-      v-if="showAddForm"
-      :bookmark="currentBookmark"
-      :isEdit="isEditing"
-      @close="closeForm"
-      @save="saveBookmark"
-    />
+    <div v-if="showAddForm" class="modal-overlay" @click="closeForm">
+      <div class="modal-content" @click.stop>
+        <BookmarkForm
+          :bookmark="currentBookmark"
+          :isEdit="isEditing"
+          @close="closeForm"
+          @save="saveBookmark"
+        />
+      </div>
+    </div>
     
     <!-- 删除确认对话框 -->
     <div v-if="showDeleteConfirm" class="modal-overlay" @click="closeDeleteConfirm">
@@ -88,24 +91,35 @@ export default {
 
 <style scoped>
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 99999 !important;
+  overflow: visible !important;
+  transform: none !important;
+  will-change: transform;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .modal-content {
+  position: relative;
+  z-index: 100000 !important;
   background-color: var(--surface-color);
+  padding: var(--space-4);
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow: auto;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transform: none !important;
 }
 
 .modal-header {
