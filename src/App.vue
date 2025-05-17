@@ -11,6 +11,7 @@
 
 <script>
 import Sidebar from './components/Sidebar.vue';
+import { startSync, stopSync } from './services/storage';
 
 export default {
   name: 'App',
@@ -22,18 +23,31 @@ export default {
       isDarkMode: false
     };
   },
+  created() {
+    // 从本地存储加载暗黑模式设置
+    const savedMode = localStorage.getItem('darkMode');
+    if (savedMode) {
+      this.isDarkMode = JSON.parse(savedMode);
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      this.isDarkMode = prefersDark;
+    }
+    document.documentElement.classList.toggle('dark-theme', this.isDarkMode);
+    
+    // Load initial data
+    this.$store.dispatch('bookmarks/loadBookmarks');
+    this.$store.dispatch('tags/loadTags');
+    
+    // Start sync
+    startSync();
+  },
+  beforeDestroy() {
+    stopSync();
+  },
   methods: {
     toggleDarkMode() {
       this.isDarkMode = !this.isDarkMode;
       localStorage.setItem('darkMode', this.isDarkMode);
-      document.documentElement.classList.toggle('dark-theme', this.isDarkMode);
-    }
-  },
-  created() {
-    // 从本地存储加载暗黑模式设置
-    const savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode !== null) {
-      this.isDarkMode = savedDarkMode === 'true';
       document.documentElement.classList.toggle('dark-theme', this.isDarkMode);
     }
   }

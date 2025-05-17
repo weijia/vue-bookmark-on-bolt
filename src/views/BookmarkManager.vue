@@ -147,6 +147,11 @@ export default {
 
 <style scoped>
 .search-bar-container {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-background);
+  padding: var(--space-4) 0;
   margin-bottom: var(--space-4);
 }
 
