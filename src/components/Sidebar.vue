@@ -25,22 +25,22 @@
       
       <div class="nav-divider" v-if="!isMobile"></div>
       
-      <div class="tag-section" v-if="!isCollapsed && !isMobile">
-        <h3 class="tag-header">Tags</h3>
-        <ul class="tag-list">
-          <li v-for="tag in sortedTags" :key="tag.id" class="tag-item">
-            <router-link 
-              :to="{ path: '/', query: { tag: tag.id }}" 
-              class="tag-link"
-              @click.native="$emit('search-tag', tag.id)"
-            >
-              <span class="tag-color" :style="{ backgroundColor: tag.color }"></span>
-              <span class="tag-name">{{ tag.name }}</span>
-              <span class="tag-count">{{ tag.count }}</span>
-            </router-link>
-          </li>
-        </ul>
-      </div>
+    <div class="tag-section" v-if="!isCollapsed && !isMobile">
+      <h3 class="tag-header">Tags</h3>
+      <ul class="tag-list">
+        <li v-for="tag in sortedTags" :key="tag.id" class="tag-item">
+          <div 
+            class="tag-link"
+            :class="{ 'active': currentTagId === tag.id }"
+            @click="handleTagClick(tag.id)"
+          >
+            <span class="tag-color" :style="{ backgroundColor: tag.color }"></span>
+            <span class="tag-name">{{ tag.name }}</span>
+            <span class="tag-count">{{ tag.count }}</span>
+          </div>
+        </li>
+      </ul>
+    </div>
     </nav>
     
     <div class="sidebar-footer" v-if="!isCollapsed && !isMobile">
@@ -64,16 +64,20 @@ export default {
     }
   },
   computed: {
+    ...mapGetters({
+      allTags: 'tags/allTags'
+    }),
     sortedTags() {
-      return [...this.$store.getters['tags/allTags']]
+      return [...this.allTags]
         .sort((a, b) => {
-          // 先按使用次数降序
           if (b.count !== a.count) {
             return b.count - a.count
           }
-          // 次数相同的按字母顺序
           return a.name.localeCompare(b.name)
         })
+    },
+    currentTagId() {
+      return this.$route.query.tag
     }
   },
   methods: {
@@ -83,19 +87,31 @@ export default {
     },
     checkMobile() {
       this.isMobile = window.innerWidth <= 768
+    },
+    handleTagClick(tagId) {
+      if (this.currentTagId === tagId) {
+        // 取消选中
+        this.$router.replace({ 
+          path: '/',
+          query: { ...this.$route.query, tag: undefined }
+        })
+      } else {
+        // 选中新标签
+        this.$router.replace({
+          path: '/',
+          query: { ...this.$route.query, tag: tagId }
+        })
+        // 点击未选中的标签，选中该标签
+        this.$emit('search-tag', tagId)
+      }
     }
   },
   created() {
-    // Load sidebar state from localStorage
     const savedState = localStorage.getItem('sidebarCollapsed')
     if (savedState) {
       this.isCollapsed = JSON.parse(savedState)
     }
-    
-    // Check initial mobile state
     this.checkMobile()
-    
-    // Add resize listener
     window.addEventListener('resize', this.checkMobile)
   },
   beforeDestroy() {
@@ -211,11 +227,17 @@ export default {
   color: var(--text-secondary);
   transition: background-color 0.2s;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .tag-link:hover {
   background-color: var(--hover-color);
   color: var(--text-primary);
+}
+
+.tag-link.active {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--primary-color);
 }
 
 .tag-color {
