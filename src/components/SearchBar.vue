@@ -15,9 +15,27 @@ import debounce from 'lodash.debounce'
 
 export default {
   name: 'SearchBar',
+  props: {
+    value: {
+      type: String,
+      default: ''
+    }
+  },
   data() {
     return {
-      searchQuery: ''
+      searchQuery: this.value,
+      isExternalUpdate: false
+    }
+  },
+  watch: {
+    value(newVal) {
+      if (newVal !== this.searchQuery) {
+        this.isExternalUpdate = true
+        this.searchQuery = newVal
+        this.$nextTick(() => {
+          this.isExternalUpdate = false
+        })
+      }
     }
   },
   created() {
@@ -29,7 +47,10 @@ export default {
       this.debouncedSearch()
     },
     emitSearch() {
-      this.$emit('search', this.searchQuery)
+      if (!this.isExternalUpdate) {
+        this.$emit('input', this.searchQuery)
+        this.$emit('search', this.searchQuery)
+      }
     }
   },
   beforeDestroy() {

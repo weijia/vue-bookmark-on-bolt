@@ -1,7 +1,7 @@
 <template>
   <div id="app" :class="{ 'dark-mode': isDarkMode }">
     <div class="app-container">
-      <Sidebar />
+      <Sidebar @search-tag="handleTagSearch" />
       <main class="main-content">
         <router-view />
       </main>
@@ -20,7 +20,14 @@ export default {
   },
   data() {
     return {
-      isDarkMode: false
+      isDarkMode: false,
+      searchQuery: ''
+    };
+  },
+  provide() {
+    return {
+      searchQuery: this.searchQuery,
+      setSearchQuery: this.setSearchQuery
     };
   },
   created() {
@@ -49,6 +56,18 @@ export default {
       this.isDarkMode = !this.isDarkMode;
       localStorage.setItem('darkMode', this.isDarkMode);
       document.documentElement.classList.toggle('dark-theme', this.isDarkMode);
+    },
+    handleTagSearch(tagId) {
+      this.$store.commit('bookmarks/setSelectedTags', [tagId]);
+      this.$router.replace({
+        query: {
+          ...this.$route.query,
+          tag: tagId
+        }
+      });
+    },
+    setSearchQuery(query) {
+      this.searchQuery = query;
     }
   }
 };

@@ -7,7 +7,21 @@ const state = {
 };
 
 const getters = {
-  allTags: state => state.tags,
+  allTags: (state, getters, rootState) => {
+    // 统计每个标签的使用次数
+    const tagCounts = {}
+    rootState.bookmarks.bookmarks?.forEach(bookmark => {
+      bookmark.tagIds?.forEach(tagId => {
+        tagCounts[tagId] = (tagCounts[tagId] || 0) + 1
+      })
+    })
+    
+    // 返回带使用次数的标签列表
+    return [...state.tags].map(tag => ({
+      ...tag,
+      count: tagCounts[tag.id] || 0
+    }))
+  },
   
   tagById: state => id => {
     return state.tags.find(tag => tag.id === id);

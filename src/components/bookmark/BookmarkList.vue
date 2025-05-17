@@ -23,6 +23,7 @@
         :isForceValid="isForceValid"
         @edit="$emit('edit', bookmark)"
         @delete="$emit('delete', $event)"
+        @search-tag="$emit('search-tag', $event)"
       />
     </div>
   </div>

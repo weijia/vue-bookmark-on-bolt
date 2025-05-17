@@ -58,6 +58,7 @@
             class="tag"
             :style="{ backgroundColor: getTagColor(tagId) + '20', 
                       color: getTagColor(tagId) }"
+            @click="$emit('search-tag', tagId)"
           >
             {{ getTagName(tagId) }}
           </span>

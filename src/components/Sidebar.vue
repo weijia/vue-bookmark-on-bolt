@@ -28,14 +28,15 @@
       <div class="tag-section" v-if="!isCollapsed && !isMobile">
         <h3 class="tag-header">Tags</h3>
         <ul class="tag-list">
-          <li v-for="tag in tags" :key="tag.id" class="tag-item">
+          <li v-for="tag in sortedTags" :key="tag.id" class="tag-item">
             <router-link 
               :to="{ path: '/', query: { tag: tag.id }}" 
               class="tag-link"
+              @click.native="$emit('search-tag', tag.id)"
             >
               <span class="tag-color" :style="{ backgroundColor: tag.color }"></span>
               <span class="tag-name">{{ tag.name }}</span>
-              <span class="tag-count">{{ getBookmarkCountForTag(tag.id) }}</span>
+              <span class="tag-count">{{ tag.count }}</span>
             </router-link>
           </li>
         </ul>
@@ -63,18 +64,22 @@ export default {
     }
   },
   computed: {
-    ...mapGetters({
-      tags: 'tags/allTags',
-      bookmarksByTag: 'bookmarks/bookmarksByTag'
-    })
+    sortedTags() {
+      return [...this.$store.getters['tags/allTags']]
+        .sort((a, b) => {
+          // 先按使用次数降序
+          if (b.count !== a.count) {
+            return b.count - a.count
+          }
+          // 次数相同的按字母顺序
+          return a.name.localeCompare(b.name)
+        })
+    }
   },
   methods: {
     toggleCollapse() {
       this.isCollapsed = !this.isCollapsed
       localStorage.setItem('sidebarCollapsed', JSON.stringify(this.isCollapsed))
-    },
-    getBookmarkCountForTag(tagId) {
-      return this.bookmarksByTag(tagId).length
     },
     checkMobile() {
       this.isMobile = window.innerWidth <= 768

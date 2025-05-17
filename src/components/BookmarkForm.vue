@@ -144,7 +144,6 @@ export default {
       allTags: 'tags/allTags'
     }),
     filteredTags() {
-      console.log('All tags:', this.allTags);
       const searchTerm = this.tagSearch.toLowerCase();
       const allTags = [...this.allTags];
       
@@ -165,8 +164,6 @@ export default {
     }
   },
   created() {
-    console.log('Initializing form with bookmark:', this.bookmark)
-    console.log('All tags in created:', this.allTags)
     if (this.isEdit && this.bookmark) {
       this.form = {
         title: this.bookmark.title || '',
@@ -174,9 +171,6 @@ export default {
         description: this.bookmark.description || '',
         tagIds: [...(this.bookmark.tagIds || [])]
       }
-      console.log('Form initialized:', this.form)
-      console.log('Tag IDs:', this.form.tagIds)
-      console.log('All tags after init:', this.allTags)
     }
   },
   methods: {

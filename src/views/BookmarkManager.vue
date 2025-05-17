@@ -36,6 +36,7 @@
       @edit="editBookmark"
       @delete="confirmDelete"
       @add="showAddForm = true"
+      @search-tag="handleTagSearch"
     />
     
     <!-- 模态框组件 -->
@@ -124,19 +125,26 @@ export default {
     handleSearch(query) {
       this.$store.commit('bookmarks/setSearchQuery', query);
     },
+    handleTagSearch(tagId) {
+      this.$store.commit('bookmarks/setSelectedTags', [tagId]);
+      this.$router.replace({
+        query: {
+          ...this.$route.query,
+          tag: tagId
+        }
+      });
+    },
     toggleViewMode() {
       this.isCompactMode = !this.isCompactMode;
       localStorage.setItem('bookmarkViewMode', this.isCompactMode ? 'compact' : 'detailed');
     },
     editBookmark(bookmark) {
-      console.log('Setting currentBookmark:', bookmark);
       this.currentBookmark = { 
         ...bookmark,
         tagIds: bookmark.tagIds || [] // 确保tagIds存在
       };
       this.isEditing = true;
       this.showAddForm = true;
-      console.log('currentBookmark set:', this.currentBookmark);
     },
     closeForm() {
       this.showAddForm = false;
