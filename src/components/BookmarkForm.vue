@@ -46,7 +46,7 @@
           class="tag-search"
         />
         <div class="tags-container">
-          <div class="tags-selector">
+          <div class="tags-selector" :key="'tags-selector-' + form.tagIds.join()">
             <!-- 显示已有标签 -->
             <div 
               v-for="tag in filteredTags" 
@@ -115,9 +115,13 @@ import { checkUrlValidity } from '../utils/urlValidator'
 export default {
   name: 'BookmarkForm',
   props: {
-    bookmarkId: {
-      type: String,
+    bookmark: {
+      type: Object,
       default: null
+    },
+    isEdit: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -137,46 +141,53 @@ export default {
   },
   computed: {
     ...mapGetters({
-      allTags: 'tags/allTags',
-      bookmarkById: 'bookmarks/bookmarkById'
+      allTags: 'tags/allTags'
     }),
-    isEdit() {
-      return !!this.bookmarkId
-    },
     filteredTags() {
+      console.log('All tags:', this.allTags);
       const searchTerm = this.tagSearch.toLowerCase();
-      return this.allTags.filter(tag => 
-        tag.name.toLowerCase().includes(searchTerm)
+      const allTags = [...this.allTags];
+      
+      // 优先显示当前书签的标签
+      const currentTags = allTags.filter(tag => 
+        this.form.tagIds.includes(tag.id)
       );
+      
+      // 其他标签按名称排序
+      const otherTags = allTags
+        .filter(tag => 
+          !this.form.tagIds.includes(tag.id) &&
+          tag.name.toLowerCase().includes(searchTerm)
+        )
+        .sort((a, b) => a.name.localeCompare(b.name));
+      
+      return [...currentTags, ...otherTags];
     }
   },
   created() {
-    if (this.isEdit) {
-      const bookmark = this.bookmarkById(this.bookmarkId)
-      if (bookmark) {
-        this.form = {
-          title: bookmark.title,
-          url: bookmark.url,
-          description: bookmark.description,
-          tagIds: [...bookmark.tagIds]
-        }
+    console.log('Initializing form with bookmark:', this.bookmark)
+    console.log('All tags in created:', this.allTags)
+    if (this.isEdit && this.bookmark) {
+      this.form = {
+        title: this.bookmark.title || '',
+        url: this.bookmark.url || '',
+        description: this.bookmark.description || '',
+        tagIds: [...(this.bookmark.tagIds || [])]
       }
+      console.log('Form initialized:', this.form)
+      console.log('Tag IDs:', this.form.tagIds)
+      console.log('All tags after init:', this.allTags)
     }
   },
   methods: {
-    async validateUrl() {
-      return
-      if (!this.form.url) return
-      
+    validateUrl(url) {
       try {
-        // Check URL format
-        new URL(this.form.url)
+        new URL(url)
         this.urlError = null
-        
-        // Check if URL is accessible (but don't block UI)
-        this.checkAccessibility()
+        return true
       } catch (e) {
-        this.urlError = 'Invalid URL format. Please enter a valid URL.'
+        this.urlError = 'Please enter a valid URL'
+        return false
       }
     },
     
@@ -212,22 +223,44 @@ export default {
     
     async submitForm() {
       this.loading = true
+      this.urlError = null
       
+      // 验证URL格式
+      if (!this.validateUrl(this.form.url)) {
+        this.loading = false
+        return
+      }
+
       try {
-        if (this.isEdit) {
-          await this.$store.dispatch('bookmarks/updateBookmark', {
-            id: this.bookmarkId,
-            updates: this.form
-          })
-          this.$emit('updated')
-        } else {
-          await this.$store.dispatch('bookmarks/addBookmark', this.form)
-          this.$emit('added')
+        const bookmarkData = {
+          title: this.form.title,
+          url: this.form.url,
+          description: this.form.description,
+          tagIds: this.form.tagIds
         }
+
+        if (this.isEdit && this.bookmark) {
+          bookmarkData.id = this.bookmark.id
+          await this.$store.dispatch('bookmarks/updateBookmark', bookmarkData)
+        } else {
+          await this.$store.dispatch('bookmarks/createBookmark', bookmarkData)
+        }
+
+        this.$emit('save', bookmarkData)
       } catch (error) {
         console.error('Error saving bookmark:', error)
       } finally {
         this.loading = false
+      }
+    },
+    
+    validateUrl(url) {
+      try {
+        new URL(url)
+        return true
+      } catch (e) {
+        this.urlError = 'Please enter a valid URL'
+        return false
       }
     }
   }

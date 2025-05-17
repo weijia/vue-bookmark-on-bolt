@@ -49,6 +49,15 @@ export default {
   components: {
     BookmarkForm
   },
+  created() {
+    console.log('BookmarkModals received props:', {
+      showAddForm: this.showAddForm,
+      showDeleteConfirm: this.showDeleteConfirm,
+      currentBookmark: this.currentBookmark,
+      isEditing: this.isEditing,
+      bookmarkToDelete: this.bookmarkToDelete
+    });
+  },
   props: {
     showAddForm: {
       type: Boolean,

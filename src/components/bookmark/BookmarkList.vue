@@ -21,7 +21,7 @@
         :bookmark="bookmark"
         :isCompact="isCompactMode"
         :isForceValid="isForceValid"
-        @edit="$emit('edit', $event)"
+        @edit="$emit('edit', bookmark)"
         @delete="$emit('delete', $event)"
       />
     </div>

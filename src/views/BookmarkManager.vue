@@ -129,9 +129,14 @@ export default {
       localStorage.setItem('bookmarkViewMode', this.isCompactMode ? 'compact' : 'detailed');
     },
     editBookmark(bookmark) {
-      this.currentBookmark = { ...bookmark };
+      console.log('Setting currentBookmark:', bookmark);
+      this.currentBookmark = { 
+        ...bookmark,
+        tagIds: bookmark.tagIds || [] // 确保tagIds存在
+      };
       this.isEditing = true;
       this.showAddForm = true;
+      console.log('currentBookmark set:', this.currentBookmark);
     },
     closeForm() {
       this.showAddForm = false;
@@ -142,7 +147,7 @@ export default {
       if (this.isEditing) {
         this.$store.dispatch('bookmarks/updateBookmark', {
           id: this.currentBookmark.id,
-          bookmarkData
+          updates: bookmarkData
         });
       } else {
         this.$store.dispatch('bookmarks/addBookmark', bookmarkData);
