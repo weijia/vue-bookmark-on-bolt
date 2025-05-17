@@ -16,7 +16,7 @@
          class="bookmarks-list" 
          :data-view-mode="isCompactMode ? 'compact' : 'detailed'">
       <BookmarkItem 
-        v-for="bookmark in (bookmarks || [])"
+        v-for="bookmark in bookmarks"
         :key="bookmark.id"
         :bookmark="bookmark"
         :isCompact="isCompactMode"

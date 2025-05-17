@@ -9,8 +9,12 @@
     <!-- 书签头部 -->
     <BookmarkHeader 
       :isCompactMode="isCompactMode"
+      :sortBy="sortBy"
+      :sortOrder="sortOrder"
       @toggle-view="toggleViewMode"
       @add="showAddForm = true"
+      @update:sortBy="val => sortBy = val"
+      @update:sortOrder="val => sortOrder = val"
     />
     
     <!-- 无效书签提示 -->
@@ -23,7 +27,7 @@
     
     <!-- 书签列表 -->
     <BookmarkList
-      :bookmarks="filteredBookmarks || []"
+      :bookmarks="sortedBookmarks"
       :loading="loading"
       :isCompactMode="isCompactMode"
       :isForceValid="$store.state.bookmarks.isForceValid"
@@ -74,7 +78,9 @@ export default {
       currentBookmark: null,
       isCompactMode: true,
       showDeleteConfirm: false,
-      bookmarkToDelete: {}
+      bookmarkToDelete: {},
+      sortBy: 'createdAt',
+      sortOrder: 'desc'
     };
   },
   computed: {
@@ -87,6 +93,23 @@ export default {
     ...mapGetters({
       filteredBookmarks: 'bookmarks/filteredBookmarks'
     }),
+    sortedBookmarks() {
+      const bookmarks = [...(this.filteredBookmarks || [])]; // 创建新数组确保响应式
+      const order = this.sortOrder === 'asc' ? 1 : -1;
+      
+      const sorted = bookmarks.sort((a, b) => {
+        if (this.sortBy === 'isValid') {
+          return (a.isValid === b.isValid) ? 0 : (a.isValid ? -1 : 1) * order;
+        }
+        
+        const dateA = new Date(a[this.sortBy] || 0);
+        const dateB = new Date(b[this.sortBy] || 0);
+        return (dateA - dateB) * order;
+      });
+      
+      // 返回新数组确保响应式更新
+      return [...sorted];
+    },
     ...mapState({
       isForceValid: state => state.bookmarks.isForceValid
     }),
