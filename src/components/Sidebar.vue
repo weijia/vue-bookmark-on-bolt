@@ -8,7 +8,7 @@
     </div>
     
     <nav class="sidebar-nav">
-      <router-link to="/bookmarks" class="nav-item" exact>
+      <router-link to="/" class="nav-item" exact>
         <span class="nav-icon">🔖</span>
         <span class="nav-label" v-if="!isCollapsed">Bookmarks</span>
       </router-link>
@@ -30,7 +30,7 @@
         <ul class="tag-list">
           <li v-for="tag in tags" :key="tag.id" class="tag-item">
             <router-link 
-              :to="{ path: '/bookmarks', query: { tag: tag.id }}" 
+              :to="{ path: '/', query: { tag: tag.id }}" 
               class="tag-link"
             >
               <span class="tag-color" :style="{ backgroundColor: tag.color }"></span>

@@ -77,8 +77,8 @@
       </div>
     </div>
     
-    <!-- Mobile swipe actions -->
-    <div class="swipe-actions" :style="actionsStyle">
+    <!-- Mobile swipe actions - only shown on mobile -->
+    <div v-if="isMobile()" class="swipe-actions" :style="actionsStyle">
       <button 
         class="swipe-btn edit-btn" 
         @click="$emit('edit', bookmark.id)"
@@ -415,17 +415,11 @@ export default {
   }
 
   .swipe-actions {
-    display: flex;
-    position: static; 
-    transform: none; 
-    transition: none;
-    gap: 8px; 
-    margin-top: 8px; 
+    display: none !important;
   }
 
-  .swipe-btn {
-    padding: 4px 8px; 
-    border-radius: 4px; 
+  .desktop-actions {
+    display: flex;
   }
 }
 </style>

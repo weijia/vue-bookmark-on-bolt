@@ -4,7 +4,10 @@ import { checkUrlValidity } from '../../utils/urlValidator';
 const state = {
   bookmarks: [],
   loading: false,
-  error: null
+  error: null,
+  isForceValid: true,
+  searchQuery: '',
+  selectedTags: []
 };
 
 const getters = {
@@ -43,6 +46,28 @@ const getters = {
       
       return matchesQuery && matchesTag;
     });
+  },
+  
+  filteredBookmarks: (state) => {
+    const bookmarks = state.bookmarks || [];
+    const searchQuery = state.searchQuery;
+    const selectedTags = state.selectedTags;
+    
+    if (!searchQuery && (!selectedTags || selectedTags.length === 0)) {
+      return bookmarks;
+    }
+    
+    return bookmarks.filter(bookmark => {
+      const matchesQuery = !searchQuery || 
+        bookmark.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bookmark.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bookmark.description.toLowerCase().includes(searchQuery.toLowerCase());
+        
+      const matchesTags = !selectedTags || selectedTags.length === 0 || 
+        selectedTags.some(tagId => bookmark.tagIds.includes(tagId));
+      
+      return matchesQuery && matchesTags;
+    });
   }
 };
 
@@ -75,7 +100,7 @@ const actions = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         lastVisited: null,
-        isValid: await checkUrlValidity(bookmarkData.url),
+        isValid: state.isForceValid ? true : await checkUrlValidity(bookmarkData.url),
         visitCount: 0
       };
       
@@ -99,8 +124,8 @@ const actions = {
         throw new Error('Bookmark not found');
       }
       
-      let isValid = doc.isValid;
-      if (updates.url && updates.url !== doc.url) {
+      let isValid = state.isForceValid ? true : doc.isValid;
+      if (!state.isForceValid && updates.url && updates.url !== doc.url) {
         isValid = await checkUrlValidity(updates.url);
       }
       
@@ -148,6 +173,84 @@ const actions = {
     } catch (error) {
       commit('setError', error.message);
     }
+  },
+  
+  async importBookmarks({ commit, state }, bookmarks) {
+    try {
+      commit('setLoading', true);
+      let importedCount = 0;
+      const errors = [];
+      
+      // 处理每个书签
+      for (const bookmarkData of bookmarks) {
+        try {
+          // 确保书签有必要的字段
+          if (!bookmarkData.url) {
+            errors.push(`Bookmark missing URL: ${bookmarkData.title || 'Untitled'}`);
+            continue;
+          }
+          
+          // 检查书签是否已存在
+          const existingBookmark = state.bookmarks.find(b => 
+            b.url === bookmarkData.url || (bookmarkData.id && b.id === bookmarkData.id)
+          );
+          
+          if (existingBookmark) {
+            // 如果已存在，可以选择更新或跳过
+            continue;
+          }
+          
+          // 准备书签数据
+          const uuid = bookmarkData.id || crypto.randomUUID();
+          
+          // 处理时间戳 - 支持Unix时间戳（数字）或ISO字符串
+          const createdAt = bookmarkData.createdAt 
+            ? (typeof bookmarkData.createdAt === 'number' 
+                ? new Date(bookmarkData.createdAt * 1000).toISOString() 
+                : bookmarkData.createdAt)
+            : new Date().toISOString();
+            
+          const updatedAt = bookmarkData.updatedAt
+            ? (typeof bookmarkData.updatedAt === 'number'
+                ? new Date(bookmarkData.updatedAt * 1000).toISOString()
+                : bookmarkData.updatedAt)
+            : new Date().toISOString();
+          
+          // 支持潮汐收藏格式（name -> title, icon -> favicon）
+          const title = bookmarkData.title || bookmarkData.name || 'Untitled';
+          const favicon = bookmarkData.favicon || bookmarkData.icon || `${new URL(bookmarkData.url).origin}/favicon.ico`;
+          
+          const bookmark = {
+            _id: uuid,
+            id: uuid,
+            title: title,
+            url: bookmarkData.url,
+            description: bookmarkData.description || '',
+            favicon: favicon,
+            tagIds: bookmarkData.tagIds || [],
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            lastVisited: bookmarkData.lastVisited || null,
+            isValid: bookmarkData.isValid !== undefined ? bookmarkData.isValid : await checkUrlValidity(bookmarkData.url),
+            visitCount: bookmarkData.visitCount || 0
+          };
+          
+          // 保存到数据库
+          await bookmarksDB.put(bookmark);
+          commit('addBookmark', bookmark);
+          importedCount++;
+        } catch (error) {
+          errors.push(`Error importing bookmark: ${error.message}`);
+        }
+      }
+      
+      return { importedCount, errors };
+    } catch (error) {
+      commit('setError', error.message);
+      throw error;
+    } finally {
+      commit('setLoading', false);
+    }
   }
 };
 
@@ -161,7 +264,7 @@ const mutations = {
   },
   
   setBookmarks(state, bookmarks) {
-    state.bookmarks = bookmarks;
+    state.bookmarks = bookmarks || [];
   },
   
   addBookmark(state, bookmark) {
@@ -177,6 +280,18 @@ const mutations = {
   
   deleteBookmark(state, id) {
     state.bookmarks = state.bookmarks.filter(b => b.id !== id);
+  },
+  
+  setIsForceValid(state, value) {
+    state.isForceValid = value;
+  },
+  
+  setSearchQuery(state, query) {
+    state.searchQuery = query;
+  },
+  
+  setSelectedTags(state, tags) {
+    state.selectedTags = tags;
   }
 };
 

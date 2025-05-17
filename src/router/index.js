@@ -9,11 +9,6 @@ Vue.use(VueRouter)
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    redirect: '/bookmarks'
-  },
-  {
-    path: '/bookmarks',
     name: 'BookmarkManager',
     component: BookmarkManager
   },

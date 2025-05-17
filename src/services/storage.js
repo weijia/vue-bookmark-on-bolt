@@ -365,5 +365,7 @@ export {
   bookmarksDB,
   tagsDB,
   remoteStorage,
-  startSync
+  startSync,
+  syncTags, // 导出 syncTags 函数
+  syncBookmarks // 导出 syncBookmarks 函数以保持一致性
 };

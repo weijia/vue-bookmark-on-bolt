@@ -98,6 +98,24 @@
           </label>
         </div>
       </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <h3 class="setting-name">Import Tags</h3>
+          <p class="setting-description">Import tags from JSON file</p>
+        </div>
+        <div class="setting-control">
+          <label class="btn btn-outline import-label">
+            Import
+            <input 
+              type="file" 
+              accept=".json" 
+              @change="importTags" 
+              class="file-input"
+            />
+          </label>
+        </div>
+      </div>
       
       <div class="setting-item">
         <div class="setting-info">
@@ -229,7 +247,7 @@
 import RemoteStorage from 'remotestoragejs';
 import Widget from 'remotestorage-widget';
 import { mapGetters } from 'vuex';
-import { configurePouchDBSync, getSyncStatus } from '../services/storage';
+import { configurePouchDBSync, getSyncStatus, syncTags, syncBookmarks } from '../services/storage';
 
 export default {
   name: 'Settings',
@@ -338,35 +356,196 @@ export default {
       URL.revokeObjectURL(url)
     },
     
-    importBookmarks(event) {
+    async importBookmarks(event) {
       const file = event.target.files[0]
       if (!file) return
+    
+      try {
+        // 使用Promise处理文件读取
+        const content = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = e => resolve(e.target.result)
+          reader.onerror = e => reject(e)
+          reader.readAsText(file)
+        })
       
-      const reader = new FileReader()
-      reader.onload = e => {
-        try {
-          const data = JSON.parse(e.target.result)
-          
-          if (data.tags && Array.isArray(data.tags)) {
-            for (const tag of data.tags) {
+        // 解析导入的数据
+        const rawData = JSON.parse(content)
+        let tagsImported = 0
+        let bookmarksImported = 0
+        let result = { errors: [] }
+      
+        // 检查数据格式
+        // 1. 标准格式: { bookmarks: [...], tags: [...] }
+        // 2. 潮汐收藏格式: [ { name, url, ... }, ... ]
+      
+        if (Array.isArray(rawData)) {
+          // 潮汐收藏格式 - 直接是书签数组
+          result = await this.$store.dispatch('bookmarks/importBookmarks', rawData)
+          bookmarksImported = result.importedCount
+        
+          if (result.errors && result.errors.length > 0) {
+            console.warn('Bookmark import warnings:', result.errors)
+          }
+        } else {
+          // 标准格式 - 包含bookmarks和tags的对象
+          // 导入标签
+          if (rawData.tags && Array.isArray(rawData.tags)) {
+            for (const tag of rawData.tags) {
               if (!this.allTags.some(t => t.id === tag.id)) {
-                this.$store.commit('tags/addTag', tag)
+                await this.$store.dispatch('tags/addTag', tag)
+                tagsImported++
               }
             }
           }
+        
+          // 导入书签
+          if (rawData.bookmarks && Array.isArray(rawData.bookmarks)) {
+            result = await this.$store.dispatch('bookmarks/importBookmarks', rawData.bookmarks)
+            bookmarksImported = result.importedCount
           
-          if (data.bookmarks && Array.isArray(data.bookmarks)) {
-            this.$store.dispatch('bookmarks/importBookmarks', data.bookmarks)
+            if (result.errors && result.errors.length > 0) {
+              console.warn('Bookmark import warnings:', result.errors)
+            }
           }
+        }
+      
+        // 同步到远程存储
+        try {
+          let syncMessages = [];
+        
+          if (tagsImported > 0) {
+            await syncTags();
+            syncMessages.push(`${tagsImported} tags`);
+          }
+          if (bookmarksImported > 0) {
+            await syncBookmarks();
+            syncMessages.push(`${bookmarksImported} bookmarks`);
+          }
+        
+          event.target.value = null;
+        
+          if (syncMessages.length > 0) {
+            if (result.errors && result.errors.length > 0) {
+              alert(
+                `Import completed with warnings!\n\n` +
+                `Successfully imported and synced:\n${syncMessages.join('\n')}\n\n` +
+                `There were ${result.errors.length} warnings during import.\n` +
+                `Check the console for details.`
+              );
+            } else {
+              alert(
+                `Import successful!\n\n` +
+                `Successfully imported and synced:\n${syncMessages.join('\n')}`
+              );
+            }
+          } else {
+            alert('No new items were imported.');
+          }
+        } catch (syncError) {
+          console.error('Sync error:', syncError);
+          event.target.value = null;
+        
+          let message = 'Import completed but sync failed!\n\n';
+          if (tagsImported > 0 || bookmarksImported > 0) {
+            message += `Successfully imported:\n`;
+            if (tagsImported > 0) message += `${tagsImported} tags\n`;
+            if (bookmarksImported > 0) message += `${bookmarksImported} bookmarks\n`;
+            message += `\nWarning: Failed to sync with remote storage.`;
           
-          event.target.value = null
-          alert('Import successful!')
-        } catch (error) {
-          console.error('Import error:', error)
-          alert('Failed to import bookmarks. Please check the file format.')
+            if (result.errors && result.errors.length > 0) {
+              message += `\n\nThere were also ${result.errors.length} warnings during import.\n`;
+              message += `Check the console for details.`;
+            }
+          }
+        
+          alert(message);
+        }
+      } catch (error) {
+        console.error('Import error:', error)
+        event.target.value = null
+        alert('Failed to import bookmarks. Please check the file format.')
+      }
+    },
+    
+    async importTags(event) {
+      const file = event.target.files[0]
+      if (!file) return
+    
+      try {
+        const content = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = e => resolve(e.target.result)
+          reader.onerror = e => reject(e)
+          reader.readAsText(file)
+        })
+      
+        const data = JSON.parse(content)
+      
+        // 检查是否为数组
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid format: Expected an array of tags')
+        }
+      
+        let importedCount = 0
+        const errors = []
+      
+        // 处理每个标签
+        await Promise.all(data.map(async tag => {
+          try {
+            // 验证标签格式
+            if (!tag.id || !tag.name) {
+              throw new Error(`Invalid tag format: missing id or name`)
+            }
+          
+            // 检查标签是否已存在
+            if (!this.allTags.some(t => t.id === tag.id)) {
+              await this.$store.dispatch('tags/addTag', {
+                id: tag.id,
+                name: tag.name,
+                color: tag.color || '#3b82f6',
+                createdAt: tag.createdAt // 保留原始创建时间
+              })
+              importedCount++
+            }
+          } catch (err) {
+            errors.push(`Failed to import tag "${tag.name || 'unknown'}": ${err.message}`)
+          }
+      }))
+    
+      event.target.value = null
+    
+      // 导入完成后立即触发同步
+      if (importedCount > 0) {
+        try {
+          await syncTags()
+          
+          if (errors.length > 0) {
+            console.warn('Import warnings:', errors)
+            alert(`Imported ${importedCount} tags with ${errors.length} errors.\nCheck console for details.\nTags have been synced to remote storage.`)
+          } else {
+            alert(`Successfully imported ${importedCount} tags!\nTags have been synced to remote storage.`)
+          }
+        } catch (syncError) {
+          console.error('Error syncing tags:', syncError)
+          if (errors.length > 0) {
+            alert(`Imported ${importedCount} tags with ${errors.length} errors.\nCheck console for details.\nWarning: Failed to sync with remote storage.`)
+          } else {
+            alert(`Successfully imported ${importedCount} tags!\nWarning: Failed to sync with remote storage.`)
+          }
+        }
+      } else {
+        if (errors.length > 0) {
+          console.warn('Import warnings:', errors)
+          alert(`No tags were imported. Found ${errors.length} errors.\nCheck console for details.`)
+        } else {
+          alert('No new tags were imported.')
         }
       }
-      reader.readAsText(file)
+      } catch (error) {
+        console.error('Import tags error:', error)
+        alert('Failed to import tags. Please check the file format.')
+      }
     },
     
     confirmReset() {
