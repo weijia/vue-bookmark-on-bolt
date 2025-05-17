@@ -8,6 +8,7 @@
           :isEdit="isEditing"
           @close="closeForm"
           @save="saveBookmark"
+          @cancel="closeForm"
         />
       </div>
     </div>
