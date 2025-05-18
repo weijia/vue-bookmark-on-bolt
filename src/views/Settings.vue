@@ -1018,6 +1018,9 @@ export default {
   
   .modal-content {
     width: 95%;
+    max-height: calc(100vh - 120px); /* 考虑顶部和底部空间 */
+    overflow-y: auto;
+    padding-bottom: 60px; /* 为底部tab栏预留空间 */
   }
   
   .modal-actions {
