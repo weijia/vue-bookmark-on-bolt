@@ -1,4 +1,4 @@
-import { bookmarksDB } from '../../services/storage';
+import { bookmarksDB, syncDataToWebDAV } from '../../services/storage';
 import { checkUrlValidity } from '../../utils/urlValidator';
 
 const state = {
@@ -85,7 +85,7 @@ const actions = {
     }
   },
 
-  async addBookmark({ commit }, bookmarkData) {
+  async addBookmark({ commit, dispatch }, bookmarkData) {
     try {
       commit('setLoading', true);
       const uuid = crypto.randomUUID(); // 生成 UUID
@@ -108,6 +108,10 @@ const actions = {
       
       await bookmarksDB.put(bookmark);
       commit('addBookmark', bookmark);
+      
+      // 同步到WebDAV
+      dispatch('syncToWebDAV');
+      
       return bookmark;
     } catch (error) {
       commit('setError', error.message);
@@ -117,7 +121,7 @@ const actions = {
     }
   },
   
-  async updateBookmark({ commit, state }, { id, updates }) {
+  async updateBookmark({ commit, state, dispatch }, { id, updates }) {
     try {
       commit('setLoading', true);
       
@@ -177,7 +181,31 @@ const actions = {
     }
   },
   
-  async importBookmarks({ commit, state }, bookmarks) {
+  async syncToWebDAV({ state, rootState }) {
+    try {
+      // 获取所有书签，移除PouchDB特定字段
+      const bookmarks = state.bookmarks.map(bookmark => {
+        const { _id, _rev, ...cleanBookmark } = bookmark;
+        return cleanBookmark;
+      });
+
+      // 获取所有标签
+      const tags = rootState.tags.tags.map(tag => {
+        const { _id, _rev, ...cleanTag } = tag;
+        return cleanTag;
+      });
+
+      // 同步到WebDAV
+      await syncDataToWebDAV(bookmarks, tags);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to sync to WebDAV:', error);
+      throw error;
+    }
+  },
+
+  async importBookmarks({ commit, state, dispatch }, bookmarks) {
     try {
       commit('setLoading', true);
       let importedCount = 0;

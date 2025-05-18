@@ -1,4 +1,4 @@
-import { tagsDB } from '../../services/storage';
+import { tagsDB, syncDataToWebDAV } from '../../services/storage';
 
 const state = {
   tags: [],
@@ -29,6 +29,30 @@ const getters = {
 };
 
 const actions = {
+  async syncToWebDAV({ state, rootState }) {
+    try {
+      // 获取所有标签，移除PouchDB特定字段
+      const tags = state.tags.map(tag => {
+        const { _id, _rev, ...cleanTag } = tag;
+        return cleanTag;
+      });
+
+      // 获取所有书签
+      const bookmarks = rootState.bookmarks.bookmarks.map(bookmark => {
+        const { _id, _rev, ...cleanBookmark } = bookmark;
+        return cleanBookmark;
+      });
+
+      // 同步到WebDAV
+      await syncDataToWebDAV(bookmarks, tags);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to sync tags to WebDAV:', error);
+      throw error;
+    }
+  },
+
   async loadTags({ commit }) {
     try {
       commit('setLoading', true);
@@ -42,7 +66,7 @@ const actions = {
     }
   },
 
-  async addTag({ commit }, tagData) {
+  async addTag({ commit, dispatch }, tagData) {
     try {
       // 如果提供了id，就使用它，否则生成新的UUID
       const uuid = tagData.id || crypto.randomUUID();
@@ -57,6 +81,10 @@ const actions = {
 
       await tagsDB.put(tag);
       commit('addTag', tag);
+      
+      // 同步到WebDAV
+      dispatch('syncToWebDAV');
+      
       return tag;
     } catch (error) {
       commit('setError', error.message);
@@ -64,7 +92,7 @@ const actions = {
     }
   },
   
-  async updateTag({ commit }, { id, updates }) {
+  async updateTag({ commit, dispatch }, { id, updates }) {
     try {
       const doc = await tagsDB.get(id);
       const updatedTag = {
@@ -75,6 +103,9 @@ const actions = {
       
       await tagsDB.put(updatedTag);
       commit('updateTag', { id, updatedTag });
+      
+      // 同步到WebDAV
+      dispatch('syncToWebDAV');
     } catch (error) {
       commit('setError', error.message);
     }
@@ -99,12 +130,15 @@ const actions = {
       }
       
       commit('deleteTag', id);
+      
+      // 同步到WebDAV
+      dispatch('syncToWebDAV');
     } catch (error) {
       commit('setError', error.message);
     }
   },
 
-  async importTags({ commit, state }, tags) {
+  async importTags({ commit, state, dispatch }, tags) {
     try {
       commit('setLoading', true);
       const importedTags = [];

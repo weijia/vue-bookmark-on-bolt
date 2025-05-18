@@ -54,6 +54,21 @@
 
       <div class="setting-item">
         <div class="setting-info">
+          <h3 class="setting-name">WebDAV Sync</h3>
+          <p class="setting-description">Configure WebDAV server for syncing bookmarks and tags</p>
+        </div>
+        <div class="setting-control">
+          <button 
+            class="btn btn-outline" 
+            @click="showWebDAVModal = true"
+          >
+            Configure
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
           <h3 class="setting-name">Sync Status</h3>
           <p class="setting-description">Current sync status and last sync time</p>
         </div>
@@ -226,6 +241,91 @@
       </div>
     </div>
     
+    <!-- WebDAV Configuration Modal -->
+    <div class="modal" v-if="showWebDAVModal">
+      <div class="modal-backdrop" @click="showWebDAVModal = false"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>WebDAV Sync Configuration</h2>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="saveWebDAVConfig">
+            <div class="form-group">
+              <label>
+                <input 
+                  type="checkbox"
+                  v-model="webdavConfig.enabled"
+                /> Enable WebDAV sync
+              </label>
+            </div>
+
+            <div v-if="webdavConfig.enabled">
+              <div class="form-group">
+                <label for="webdavUrl">WebDAV Server URL</label>
+                <input 
+                  type="url" 
+                  id="webdavUrl"
+                  v-model="webdavConfig.url"
+                  placeholder="https://example.com/webdav/"
+                  required
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="webdavUsername">Username</label>
+                <input 
+                  type="text" 
+                  id="webdavUsername"
+                  v-model="webdavConfig.username"
+                  placeholder="Username"
+                  required
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="webdavPassword">Password</label>
+                <input 
+                  type="password" 
+                  id="webdavPassword"
+                  v-model="webdavConfig.password"
+                  placeholder="Password"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="webdavPath">Save Path</label>
+                <input 
+                  type="text" 
+                  id="webdavPath"
+                  v-model="webdavConfig.path"
+                  placeholder="/bookmarks"
+                  required
+                />
+                <small class="help-text">Directory path where files will be saved (e.g., /bookmarks)</small>
+              </div>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="btn btn-outline" @click="showWebDAVModal = false">
+                Cancel
+              </button>
+              <button type="button" class="btn btn-secondary" @click="testWebDAVConnection" :disabled="isTesting">
+                {{ isTesting ? 'Testing...' : 'Test Connection' }}
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="isSaving">
+                {{ isSaving ? 'Saving...' : 'Save Configuration' }}
+              </button>
+            </div>
+
+            <div v-if="webdavStatus" :class="['status-message', webdavStatus.type]">
+              {{ webdavStatus.message }}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- Reset Confirmation Modal -->
     <div class="modal" v-if="showResetModal">
       <div class="modal-backdrop" @click="showResetModal = false"></div>
@@ -247,7 +347,7 @@
 import RemoteStorage from 'remotestoragejs';
 import Widget from 'remotestorage-widget';
 import { mapGetters } from 'vuex';
-import { configurePouchDBSync, getSyncStatus, syncTags, syncBookmarks } from '../services/storage';
+import { configurePouchDBSync, getSyncStatus, syncTags, syncBookmarks, setupWebDAVSync, syncDataToWebDAV } from '../services/storage';
 
 export default {
   name: 'Settings',
@@ -257,6 +357,7 @@ export default {
       loading: false,
       showResetModal: false,
       showPouchDBModal: false,
+      showWebDAVModal: false,
       pouchDBConfig: {
         remoteUrl: '',
         username: '',
@@ -264,6 +365,16 @@ export default {
         enableSync: true,
         syncInterval: 5
       },
+      webdavConfig: {
+        enabled: false,
+        url: '',
+        username: '',
+        password: '',
+        path: '/bookmarks'
+      },
+      webdavStatus: null,
+      isTesting: false,
+      isSaving: false,
       syncStatus: 'disconnected', // disconnected, syncing, connected, error
       lastSyncTime: null
     }
@@ -293,6 +404,16 @@ export default {
     const savedConfig = localStorage.getItem('pouchDBConfig')
     if (savedConfig) {
       this.pouchDBConfig = JSON.parse(savedConfig)
+    }
+
+    // Load WebDAV config
+    const webdavConfig = localStorage.getItem('webdavConfig')
+    if (webdavConfig) {
+      try {
+        this.webdavConfig = JSON.parse(webdavConfig)
+      } catch (error) {
+        console.error('Failed to parse WebDAV config:', error)
+      }
     }
 
     // Start monitoring sync status
@@ -572,6 +693,64 @@ export default {
 
     showRemoteStorageWidget() {
       remoteStorage.connect()
+    },
+    
+    async testWebDAVConnection() {
+      this.isTesting = true;
+      this.webdavStatus = null;
+      
+      try {
+        await setupWebDAVSync({
+          ...this.webdavConfig,
+          test: true
+        });
+        
+        this.webdavStatus = {
+          type: 'success',
+          message: 'WebDAV connection successful!'
+        };
+      } catch (error) {
+        this.webdavStatus = {
+          type: 'error',
+          message: `WebDAV connection failed: ${error.message}`
+        };
+      } finally {
+        this.isTesting = false;
+      }
+    },
+    
+    async saveWebDAVConfig() {
+      this.isSaving = true;
+      this.webdavStatus = null;
+      
+      try {
+        if (this.webdavConfig.enabled) {
+          await setupWebDAVSync(this.webdavConfig);
+          this.webdavStatus = {
+            type: 'success',
+            message: 'WebDAV configuration saved and enabled!'
+          };
+        } else {
+          // 禁用WebDAV
+          localStorage.removeItem('webdavConfig');
+          this.webdavStatus = {
+            type: 'success',
+            message: 'WebDAV sync disabled'
+          };
+        }
+        
+        // 关闭模态框
+        setTimeout(() => {
+          this.showWebDAVModal = false;
+        }, 1500);
+      } catch (error) {
+        this.webdavStatus = {
+          type: 'error',
+          message: `Failed to save WebDAV configuration: ${error.message}`
+        };
+      } finally {
+        this.isSaving = false;
+      }
     },
 
     monitorSyncStatus() {
