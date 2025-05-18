@@ -74,6 +74,9 @@
           <span v-if="bookmark.visitCount > 0" class="meta-item">
             {{ bookmark.visitCount }} visits
           </span>
+          <span class="meta-item">
+            Folder: {{ folderName }}
+          </span>
         </div>
       </div>
     </div>

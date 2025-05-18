@@ -222,6 +222,7 @@ const actions = {
           const title = bookmarkData.title || bookmarkData.name || 'Untitled';
           const favicon = bookmarkData.favicon || bookmarkData.icon || `${new URL(bookmarkData.url).origin}/favicon.ico`;
           
+          // 创建基本书签对象
           const bookmark = {
             _id: uuid,
             id: uuid,
@@ -238,6 +239,17 @@ const actions = {
             isValid: bookmarkData.isValid !== undefined ? bookmarkData.isValid : await checkUrlValidity(bookmarkData.url),
             visitCount: bookmarkData.visitCount || 0
           };
+          
+          // 动态添加其他字段（排除已处理的基本字段）
+          const processedFields = ['_id', 'id', 'title', 'name', 'url', 'description', 'favicon', 'icon', 
+                                  'tagIds', 'folderId', 'topUpTime', 'createdAt', 'updatedAt', 
+                                  'lastVisited', 'isValid', 'visitCount'];
+          
+          Object.keys(bookmarkData).forEach(key => {
+            if (!processedFields.includes(key)) {
+              bookmark[key] = bookmarkData[key];
+            }
+          });
           
           // 保存到数据库
           await bookmarksDB.put(bookmark);

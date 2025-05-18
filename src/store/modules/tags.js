@@ -102,6 +102,74 @@ const actions = {
     } catch (error) {
       commit('setError', error.message);
     }
+  },
+
+  async importTags({ commit, state }, tags) {
+    try {
+      commit('setLoading', true);
+      const importedTags = [];
+      const processedFields = ['_id', 'id', 'name', 'color', 'createdAt', 'updatedAt'];
+
+      for (const tagData of tags) {
+        // 使用现有ID或生成新的UUID
+        const uuid = tagData.id || crypto.randomUUID();
+        
+        // 处理时间戳 - 支持Unix时间戳（数字）或ISO字符串
+        const createdAt = tagData.createdAt 
+          ? (typeof tagData.createdAt === 'number' 
+              ? new Date(tagData.createdAt * 1000).toISOString() 
+              : tagData.createdAt)
+          : new Date().toISOString();
+          
+        const updatedAt = tagData.updatedAt
+          ? (typeof tagData.updatedAt === 'number'
+              ? new Date(tagData.updatedAt * 1000).toISOString()
+              : tagData.updatedAt)
+          : new Date().toISOString();
+
+        // 创建基本标签对象
+        const tag = {
+          _id: uuid,
+          id: uuid,
+          name: tagData.name,
+          color: tagData.color || '#3b82f6',
+          createdAt: createdAt,
+          updatedAt: updatedAt
+        };
+
+        // 动态添加其他字段
+        Object.keys(tagData).forEach(key => {
+          if (!processedFields.includes(key)) {
+            tag[key] = tagData[key];
+          }
+        });
+
+        // 检查标签是否已存在
+        const existingTag = state.tags.find(t => t.id === uuid);
+        if (existingTag) {
+          // 更新现有标签
+          await tagsDB.put({
+            ...existingTag,
+            ...tag,
+            updatedAt: new Date().toISOString()
+          });
+          commit('updateTag', { id: uuid, updatedTag: tag });
+        } else {
+          // 添加新标签
+          await tagsDB.put(tag);
+          commit('addTag', tag);
+        }
+        
+        importedTags.push(tag);
+      }
+
+      return importedTags;
+    } catch (error) {
+      commit('setError', error.message);
+      throw error;
+    } finally {
+      commit('setLoading', false);
+    }
   }
 };
 
