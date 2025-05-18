@@ -93,6 +93,7 @@ export default {
   .main-content {
     height: auto;
     padding: 0;
+    padding-bottom: 60px; /* 为底部tab栏预留空间 */
   }
 }
 </style>
