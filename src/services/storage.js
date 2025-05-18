@@ -2,7 +2,7 @@ import PouchDB from 'pouchdb-browser';
 import RemoteStorage from 'remotestoragejs';
 import Widget from 'remotestorage-widget';
 import store from '../store'; // 导入 Vuex store
-import { configureWebDAV, syncToWebDAV } from './webdav';
+import { configureWebDAV, syncToWebDAV, loadFromWebDAV } from './webdav';
 
 // Initialize PouchDB
 const bookmarksDB = new PouchDB('bookmarks');
