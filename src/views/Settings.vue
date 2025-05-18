@@ -348,6 +348,7 @@ import RemoteStorage from 'remotestoragejs';
 import Widget from 'remotestorage-widget';
 import { mapGetters } from 'vuex';
 import { configurePouchDBSync, getSyncStatus, syncTags, syncBookmarks, setupWebDAVSync, syncDataToWebDAV } from '../services/storage';
+import { escapeId } from '../utils/idEscape';
 
 export default {
   name: 'Settings',
@@ -620,9 +621,10 @@ export default {
             }
           
             // 检查标签是否已存在
-            if (!this.allTags.some(t => t.id === tag.id)) {
+            const escapedId = escapeId(tag.id);
+            if (!this.allTags.some(t => t.id === escapedId)) {
               await this.$store.dispatch('tags/addTag', {
-                id: tag.id,
+                id: escapedId,
                 name: tag.name,
                 color: tag.color || '#3b82f6',
                 createdAt: tag.createdAt // 保留原始创建时间

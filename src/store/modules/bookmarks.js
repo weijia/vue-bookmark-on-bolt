@@ -1,5 +1,6 @@
 import { bookmarksDB, syncDataToWebDAV } from '../../services/storage';
 import { checkUrlValidity } from '../../utils/urlValidator';
+import { escapeId } from '../../utils/idEscape';
 
 const state = {
   bookmarks: [],
@@ -14,11 +15,16 @@ const getters = {
   allBookmarks: state => state.bookmarks,
   
   bookmarkById: state => id => {
-    return state.bookmarks.find(bookmark => bookmark.id === id);
+    const escapedId = escapeId(id);
+    return state.bookmarks.find(bookmark => bookmark.id === escapedId);
   },
   
   bookmarksByTag: state => tagId => {
-    return state.bookmarks.filter(bookmark => bookmark.tagIds.includes(tagId));
+    const escapedTagId = escapeId(tagId);
+    console.log('escapedTagId:', escapedTagId);
+    return state.bookmarks.filter(bookmark => 
+      bookmark.tagIds.includes(escapedTagId)
+    );
   },
   
   recentBookmarks: state => {
@@ -125,7 +131,8 @@ const actions = {
     try {
       commit('setLoading', true);
       
-      const doc = await bookmarksDB.get(id);
+      const escapedId = escapeId(id);
+      const doc = await bookmarksDB.get(escapedId);
       if (!doc) {
         throw new Error('Bookmark not found');
       }
@@ -143,7 +150,7 @@ const actions = {
       };
       
       await bookmarksDB.put(updatedBookmark);
-      commit('updateBookmark', { id, updatedBookmark });
+      commit('updateBookmark', { id: escapedId, updatedBookmark });
       return updatedBookmark;
     } catch (error) {
       commit('setError', error.message);
@@ -155,9 +162,10 @@ const actions = {
   
   async deleteBookmark({ commit }, id) {
     try {
-      const doc = await bookmarksDB.get(id);
+      const escapedId = escapeId(id);
+      const doc = await bookmarksDB.get(escapedId);
       await bookmarksDB.remove(doc);
-      commit('deleteBookmark', id);
+      commit('deleteBookmark', escapedId);
     } catch (error) {
       commit('setError', error.message);
     }
@@ -165,7 +173,8 @@ const actions = {
   
   async visitBookmark({ commit, state }, id) {
     try {
-      const doc = await bookmarksDB.get(id);
+      const escapedId = escapeId(id);
+      const doc = await bookmarksDB.get(escapedId);
       if (doc) {
         const updatedBookmark = {
           ...doc,
@@ -174,7 +183,7 @@ const actions = {
           updatedAt: new Date().toISOString()
         };
         await bookmarksDB.put(updatedBookmark);
-        commit('updateBookmark', { id, updatedBookmark });
+        commit('updateBookmark', { id: escapedId, updatedBookmark });
       }
     } catch (error) {
       commit('setError', error.message);
@@ -316,14 +325,16 @@ const mutations = {
   },
   
   updateBookmark(state, { id, updatedBookmark }) {
-    const index = state.bookmarks.findIndex(b => b.id === id);
+    const escapedId = escapeId(id);
+    const index = state.bookmarks.findIndex(b => b.id === escapedId);
     if (index !== -1) {
       state.bookmarks.splice(index, 1, updatedBookmark);
     }
   },
-  
+
   deleteBookmark(state, id) {
-    state.bookmarks = state.bookmarks.filter(b => b.id !== id);
+    const escapedId = escapeId(id);
+    state.bookmarks = state.bookmarks.filter(b => b.id !== escapedId);
   },
   
   setIsForceValid(state, value) {

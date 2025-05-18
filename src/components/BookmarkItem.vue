@@ -102,6 +102,7 @@
 <script>
 import { mapGetters } from 'vuex'
 import { extractDomain } from '../utils/urlValidator'
+import { escapeId } from '../utils/idEscape'
 
 export default {
   name: 'BookmarkItem',
@@ -192,7 +193,7 @@ export default {
     },
     
     visitBookmark() {
-      this.$store.dispatch('bookmarks/visitBookmark', this.bookmark.id)
+      this.$store.dispatch('bookmarks/visitBookmark', escapeId(this.bookmark.id))
     },
     
     touchStart(e) {

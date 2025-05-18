@@ -102,6 +102,7 @@
 <script>
 import { mapGetters } from 'vuex'
 import TagForm from '../components/TagForm.vue'
+import { escapeId } from '../utils/idEscape'
 
 export default {
   name: 'TagManager',
@@ -128,27 +129,30 @@ export default {
     },
     
     viewTagBookmarks(tagId) {
+      const escapedId = escapeId(tagId);
       this.$router.push({ 
         path: '/bookmarks',
-        query: { tag: tagId }
+        query: { tag: escapedId }
       })
     },
     
     editTag(id) {
-      this.selectedTagId = id
+      this.selectedTagId = escapeId(id)
       this.showEditModal = true
     },
     
     confirmDelete(id) {
+      const escapedId = escapeId(id);
       // Only allow deletion if no bookmarks use this tag
-      if (this.getBookmarkCountForTag(id) === 0) {
-        this.selectedTagId = id
+      if (this.getBookmarkCountForTag(escapedId) === 0) {
+        this.selectedTagId = escapedId
         this.showDeleteModal = true
       }
     },
     
     deleteTag() {
-      this.$store.dispatch('tags/deleteTag', this.selectedTagId)
+      const escapedId = escapeId(this.selectedTagId);
+      this.$store.dispatch('tags/deleteTag', escapedId)
       this.showDeleteModal = false
       this.selectedTagId = null
     },

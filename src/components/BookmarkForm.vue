@@ -128,6 +128,7 @@
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import { checkUrlValidity } from '../utils/urlValidator'
+import { escapeId } from '../utils/idEscape'
 
 export default {
   name: 'BookmarkForm',
@@ -173,13 +174,13 @@ export default {
       
       // 优先显示当前书签的标签
       const currentTags = allTags.filter(tag => 
-        this.form.tagIds.includes(tag.id)
+        this.form.tagIds.includes(escapeId(tag.id))
       );
       
       // 其他标签按名称排序
       const otherTags = allTags
         .filter(tag => 
-          !this.form.tagIds.includes(tag.id) &&
+          !this.form.tagIds.includes(escapeId(tag.id)) &&
           tag.name.toLowerCase().includes(searchTerm)
         )
         .sort((a, b) => a.name.localeCompare(b.name));
@@ -218,10 +219,11 @@ export default {
     },
     
     toggleTag(tagId) {
-      if (this.form.tagIds.includes(tagId)) {
-        this.form.tagIds = this.form.tagIds.filter(id => id !== tagId)
+      const escapedId = escapeId(tagId);
+      if (this.form.tagIds.includes(escapedId)) {
+        this.form.tagIds = this.form.tagIds.filter(id => id !== escapedId)
       } else {
-        this.form.tagIds.push(tagId)
+        this.form.tagIds.push(escapedId)
       }
     },
     // 新增：创建新标签的方法
@@ -233,7 +235,7 @@ export default {
           name: this.newTagName.trim(),
           color: this.newTagColor
         })
-        this.form.tagIds.push(newTag.id)
+        this.form.tagIds.push(escapeId(newTag.id))
         this.newTagName = ''
       } catch (error) {
         console.error('Error creating tag:', error)
