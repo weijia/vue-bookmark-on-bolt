@@ -97,6 +97,8 @@ const actions = {
         description: bookmarkData.description || '',
         favicon: `${new URL(bookmarkData.url).origin}/favicon.ico`,
         tagIds: bookmarkData.tagIds || [],
+        folderId: bookmarkData.folderId || 'my', // 默认文件夹ID
+        topUpTime: bookmarkData.topUpTime || 0, // 置顶时间
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         lastVisited: null,
@@ -228,6 +230,8 @@ const actions = {
             description: bookmarkData.description || '',
             favicon: favicon,
             tagIds: bookmarkData.tagIds || [],
+            folderId: bookmarkData.folderId || 'my',
+            topUpTime: bookmarkData.topUpTime || 0,
             createdAt: createdAt,
             updatedAt: updatedAt,
             lastVisited: bookmarkData.lastVisited || null,

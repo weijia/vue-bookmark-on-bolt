@@ -38,6 +38,23 @@
       </div>
       
       <div class="form-group">
+        <label for="folder">Folder</label>
+        <select 
+          id="folder" 
+          v-model="form.folderId"
+          class="folder-select"
+        >
+          <option 
+            v-for="folder in folders" 
+            :key="folder.id" 
+            :value="folder.id"
+          >
+            {{ folder.name }}
+          </option>
+        </select>
+      </div>
+      
+      <div class="form-group">
         <label>Tags</label>
         <input
           type="text"
@@ -130,8 +147,15 @@ export default {
         title: '',
         url: '',
         description: '',
-        tagIds: []
+        tagIds: [],
+        folderId: 'my' // 默认文件夹ID
       },
+      folders: [
+        { id: 'my', name: '我的收藏' },
+        { id: 'work', name: '工作' },
+        { id: 'study', name: '学习' },
+        { id: 'entertainment', name: '娱乐' }
+      ],
       loading: false,
       urlError: null,
       newTagName: '', // 新增：新标签名称
@@ -169,7 +193,8 @@ export default {
         title: this.bookmark.title || '',
         url: this.bookmark.url || '',
         description: this.bookmark.description || '',
-        tagIds: [...(this.bookmark.tagIds || [])]
+        tagIds: [...(this.bookmark.tagIds || [])],
+        folderId: this.bookmark.folderId || 'my'
       }
     }
   },
@@ -230,7 +255,8 @@ export default {
           title: this.form.title,
           url: this.form.url,
           description: this.form.description,
-          tagIds: this.form.tagIds
+          tagIds: this.form.tagIds,
+          folderId: this.form.folderId
         }
 
         if (this.isEdit && this.bookmark) {

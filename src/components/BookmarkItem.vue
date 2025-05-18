@@ -120,7 +120,13 @@ export default {
     return {
       touchStartClientX: null,
       swipeOffset: 0,
-      isSwiping: false
+      isSwiping: false,
+      folders: [
+        { id: 'my', name: '我的收藏' },
+        { id: 'work', name: '工作' },
+        { id: 'study', name: '学习' },
+        { id: 'entertainment', name: '娱乐' }
+      ]
     }
   },
   computed: {
@@ -138,6 +144,10 @@ export default {
         transform: `translateX(${this.swipeOffset + 100}px)`,
         transition: this.isSwiping ? 'none' : 'transform 0.3s'
       }
+    },
+    folderName() {
+      const folder = this.folders.find(f => f.id === this.bookmark.folderId)
+      return folder ? folder.name : '我的收藏'
     }
   },
   methods: {
