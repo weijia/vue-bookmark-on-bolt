@@ -1,4 +1,5 @@
 import PouchDB from 'pouchdb-browser';
+import { escapeId, unescapeId } from '../utils/idEscape';
 import RemoteStorage from 'remotestoragejs';
 import Widget from 'remotestorage-widget';
 import store from '../store'; // 导入 Vuex store
@@ -214,10 +215,13 @@ async function syncTags() {
       }
     } else {
       try {
+        // 转义ID中的下划线
+        const escapedId = escapeId(remoteTag.id);
         // 使用 bulkDocs 方法并设置 new_edits: false
         const result = await tagsDB.bulkDocs([{
           ...remoteTag,
-          _id: remoteTag.id,
+          _id: escapedId,
+          id: escapedId, // 同时更新id字段
           // 假设 remoteTag 包含 _rev 字段，如果没有，需要根据实际情况处理
           _rev: remoteTag._rev 
         }], { new_edits: false });
@@ -246,7 +250,14 @@ async function syncTags() {
 
   // 同步完成后，获取最新的本地标签数据
   const updatedLocalTags = await tagsDB.allDocs({ include_docs: true });
-  const tagsArray = updatedLocalTags.rows.map(row => row.doc);
+  const tagsArray = updatedLocalTags.rows.map(row => {
+    const doc = row.doc;
+    // 反转义ID
+    if (doc && doc.id) {
+      doc.id = unescapeId(doc.id);
+    }
+    return doc;
+  });
   // 提交 mutation 更新 Vuex 状态
   store.commit('tags/setTags', tagsArray);
 }
@@ -441,9 +452,11 @@ async function mergeData(localItems, remoteItems, db) {
   
   // 处理新增和更新的项目
   for (const [id, remoteItem] of remoteMap) {
-    if (!localMap.has(id)) {
+    // 如果是标签数据库且ID包含转义字符，先转义
+    const processedId = (db === tagsDB && id.includes('%5F')) ? unescapeId(id) : id;
+    if (!localMap.has(processedId)) {
       // 新增项目
-      await db.put({ ...remoteItem, _id: id });
+      await db.put({ ...remoteItem, _id: processedId });
     } else {
       const localItem = localMap.get(id);
       // 保留本地创建时间，使用最新的更新时间
@@ -501,8 +514,10 @@ export async function syncDataToWebDAV() {
 
     const tags = tagsResponse.rows.map(row => {
       const { _id, _rev, ...tag } = row.doc;
+      // 反转义ID
+      const unescapedId = tag.id ? unescapeId(tag.id) : (_id ? unescapeId(_id) : undefined);
       return {
-        id: tag.id || _id,
+        id: unescapedId,
         name: tag.name || '',
         createdAt: tag.createdAt || new Date().toISOString(),
         updatedAt: tag.updatedAt || new Date().toISOString(),
