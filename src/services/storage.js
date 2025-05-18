@@ -376,8 +376,9 @@ export async function setupWebDAVSync(config) {
       // 保存配置到本地存储
       localStorage.setItem('webdavConfig', JSON.stringify(config));
       
-      // 初始同步
-      await syncDataToWebDAV();
+      // 初始双向同步
+      await syncFromWebDAV(); // 先从服务器加载
+      await syncDataToWebDAV(); // 再将本地变更同步到服务器
       
       return true;
     } else {
@@ -388,6 +389,85 @@ export async function setupWebDAVSync(config) {
     console.error('WebDAV configuration error:', error);
     webdavEnabled = false;
     throw error;
+  }
+}
+
+// 从WebDAV服务器加载数据
+export async function syncFromWebDAV() {
+  if (!webdavEnabled || !webdavConfig) {
+    console.warn('WebDAV is not enabled or configured');
+    return false;
+  }
+  
+  try {
+    // 从WebDAV加载书签和标签
+    const [remoteBookmarks, remoteTags] = await Promise.all([
+      loadFromWebDAV('collection.json'),
+      loadFromWebDAV('tag.json')
+    ]);
+    
+    if (remoteBookmarks) {
+      // 合并书签到本地
+      const localBookmarks = await bookmarksDB.allDocs({ include_docs: true });
+      await mergeData(localBookmarks.rows, remoteBookmarks, bookmarksDB);
+      
+      // 更新Vuex状态
+      const updatedBookmarks = await bookmarksDB.allDocs({ include_docs: true });
+      store.commit('bookmarks/setBookmarks', updatedBookmarks.rows.map(row => row.doc));
+    }
+    
+    if (remoteTags) {
+      // 合并标签到本地
+      const localTags = await tagsDB.allDocs({ include_docs: true });
+      await mergeData(localTags.rows, remoteTags, tagsDB);
+      
+      // 更新Vuex状态
+      const updatedTags = await tagsDB.allDocs({ include_docs: true });
+      store.commit('tags/setTags', updatedTags.rows.map(row => row.doc));
+    }
+    
+    console.log('WebDAV data loaded successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to sync from WebDAV:', error);
+    throw error;
+  }
+}
+
+// 合并数据策略
+async function mergeData(localItems, remoteItems, db) {
+  const localMap = new Map(localItems.map(item => [item.doc.id, item.doc]));
+  const remoteMap = new Map(remoteItems.map(item => [item.id, item]));
+  
+  // 处理新增和更新的项目
+  for (const [id, remoteItem] of remoteMap) {
+    if (!localMap.has(id)) {
+      // 新增项目
+      await db.put({ ...remoteItem, _id: id });
+    } else {
+      const localItem = localMap.get(id);
+      // 保留本地创建时间，使用最新的更新时间
+      const createdAt = localItem.createdAt || new Date().toISOString();
+      const updatedAt = remoteItem.updatedAt > localItem.updatedAt ? 
+        remoteItem.updatedAt : localItem.updatedAt;
+      
+      // 合并项目，远程优先
+      await db.put({ 
+        ...localItem,
+        ...remoteItem,
+        _id: id,
+        _rev: localItem._rev,
+        createdAt,
+        updatedAt
+      });
+    }
+  }
+  
+  // 保留本地有但远程没有的项目
+  for (const [id, localItem] of localMap) {
+    if (!remoteMap.has(id)) {
+      await db.put(localItem);
+    }
   }
 }
 
@@ -403,22 +483,38 @@ export async function syncDataToWebDAV() {
     const bookmarksResponse = await bookmarksDB.allDocs({ include_docs: true });
     const tagsResponse = await tagsDB.allDocs({ include_docs: true });
     
+    // 转换数据格式
     const bookmarks = bookmarksResponse.rows.map(row => {
-      // 移除PouchDB特定字段
       const { _id, _rev, ...bookmark } = row.doc;
-      return bookmark;
+      return {
+        id: bookmark.id || _id,
+        name: bookmark.title || bookmark.name || '',
+        url: bookmark.url || '',
+        description: bookmark.description || '',
+        folderId: bookmark.folderId || 'my',
+        tagIds: bookmark.tagIds || [],
+        createdAt: bookmark.createdAt || new Date().toISOString(),
+        updatedAt: bookmark.updatedAt || new Date().toISOString(),
+        ...bookmark
+      };
     });
-    
+
     const tags = tagsResponse.rows.map(row => {
-      // 移除PouchDB特定字段
       const { _id, _rev, ...tag } = row.doc;
-      return tag;
+      return {
+        id: tag.id || _id,
+        name: tag.name || '',
+        createdAt: tag.createdAt || new Date().toISOString(),
+        updatedAt: tag.updatedAt || new Date().toISOString(),
+        ...tag
+      };
     });
-    
+
     // 同步到WebDAV
     await syncToWebDAV(bookmarks, tags);
     
     lastSyncTime = new Date();
+    console.log('Data synced to WebDAV successfully');
     return true;
   } catch (error) {
     console.error('Failed to sync data to WebDAV:', error);

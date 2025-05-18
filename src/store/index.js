@@ -2,12 +2,30 @@ import Vue from 'vue'
 import Vuex from 'vuex'
 import bookmarks from './modules/bookmarks'
 import tags from './modules/tags'
+import { syncFromWebDAV } from '../services/storage'
 
 Vue.use(Vuex)
 
-export default new Vuex.Store({
+const store = new Vuex.Store({
   modules: {
     bookmarks,
     tags
   }
 })
+
+// 初始化WebDAV同步
+const initWebDAVSync = async () => {
+  try {
+    const webdavConfig = localStorage.getItem('webdavConfig')
+    if (webdavConfig) {
+      await syncFromWebDAV()
+      console.log('WebDAV sync initialized')
+    }
+  } catch (error) {
+    console.error('Failed to initialize WebDAV sync:', error)
+  }
+}
+
+initWebDAVSync()
+
+export default store
