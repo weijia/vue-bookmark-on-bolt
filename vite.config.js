@@ -6,5 +6,17 @@ export default defineConfig({
   plugins: [vue2()],
   define: {
     'global': 'window'
+  },
+  base: './',
+  build: {
+    outDir: 'dist',
+    assetsInlineLimit: 0,
+    rollupOptions: {
+      output: {
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
+        assetFileNames: '[name].[ext]'
+      }
+    }
   }
 })
