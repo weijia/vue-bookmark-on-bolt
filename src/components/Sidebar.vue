@@ -8,17 +8,17 @@
     </div>
     
     <nav class="sidebar-nav">
-      <router-link to="/" class="nav-item" exact>
+      <router-link to="/" class="nav-item" exact-active-class="active">
         <span class="nav-icon">🔖</span>
         <span class="nav-label" v-if="!isCollapsed">Bookmarks</span>
       </router-link>
       
-      <router-link to="/tags" class="nav-item">
+      <router-link to="/tags" class="nav-item" active-class="active">
         <span class="nav-icon">🏷️</span>
         <span class="nav-label" v-if="!isCollapsed">Tags</span>
       </router-link>
       
-      <router-link to="/settings" class="nav-item" v-if="isMobile">
+      <router-link to="/settings" class="nav-item" v-if="isMobile" active-class="active">
         <span class="nav-icon">⚙️</span>
         <span class="nav-label" v-if="!isCollapsed">Settings</span>
       </router-link>
@@ -44,7 +44,7 @@
     </nav>
     
     <div class="sidebar-footer" v-if="!isCollapsed && !isMobile">
-      <router-link to="/settings" class="settings-link">
+      <router-link to="/settings" class="settings-link" active-class="active">
         <span class="nav-icon">⚙️</span>
         <span class="nav-label">Settings</span>
       </router-link>
@@ -54,13 +54,15 @@
 
 <script>
 import { mapGetters } from 'vuex'
+import { isExtensionEnvironment } from '../utils/environment'
 
 export default {
   name: 'Sidebar',
   data() {
     return {
       isCollapsed: false,
-      isMobile: false
+      isMobile: false,
+      isExtension: isExtensionEnvironment()
     }
   },
   computed: {
@@ -88,19 +90,49 @@ export default {
     checkMobile() {
       this.isMobile = window.innerWidth <= 768
     },
+    navigateTo(path, query = null) {
+      console.log(`Navigating to ${path}`, query);
+      
+      // 如果是标签相关的导航，让父组件处理
+      if (path === '/' && query && query.tag !== undefined) {
+        return;
+      }
+
+      // 清除当前选中的标签
+      if (path !== '/' && this.$store.state.bookmarks.selectedTags.length > 0) {
+        this.$store.commit('bookmarks/setSelectedTags', []);
+      }
+
+      // 执行导航
+      try {
+        const route = query ? { path, query } : { path };
+        this.$router.push(route).then(() => {
+          console.log('Navigation successful');
+          // 强制组件重新渲染
+          this.$nextTick(() => {
+            this.$forceUpdate();
+            // 通知父组件路由已更改
+            this.$emit('route-changed', path);
+          });
+        }).catch(err => {
+          if (err.name !== 'NavigationDuplicated') {
+            console.error('Navigation failed:', err);
+            // 如果不是重复导航错误，尝试强制刷新
+            window.location.href = path;
+          }
+        });
+      } catch (error) {
+        console.error('Navigation error:', error);
+        window.location.href = path;
+      }
+    },
     handleTagClick(tagId) {
       if (this.currentTagId === tagId) {
         // 取消选中
-        this.$router.replace({ 
-          path: '/',
-          query: { ...this.$route.query, tag: undefined }
-        })
+        this.navigateTo('/', { ...this.$route.query, tag: undefined });
       } else {
         // 选中新标签
-        this.$router.replace({
-          path: '/',
-          query: { ...this.$route.query, tag: tagId }
-        })
+        this.navigateTo('/', { ...this.$route.query, tag: tagId });
         // 点击未选中的标签，选中该标签
         this.$emit('search-tag', tagId)
       }
@@ -183,7 +215,9 @@ export default {
   background-color: var(--hover-color);
 }
 
-.nav-item.router-link-active {
+.nav-item.active,
+.nav-item.router-link-active,
+.nav-item.router-link-exact-active {
   background-color: rgba(59, 130, 246, 0.1);
   color: var(--primary-color);
 }
