@@ -7,8 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:extension": "vite build",
-    "package": "bestzip extension.zip dist/* public/manifest.json public/icons/*"
+    "build:extension": "vite build && npm run copy:extension",
+    "copy:extension": "powershell -Command \"Copy-Item -Path public/popup.html -Destination dist/ && Copy-Item -Path public/manifest.json -Destination dist/ && Copy-Item -Path public/icons -Destination dist/ -Recurse -Force\"",
+    "package": "cd dist && bestzip ../extension.zip *"
   },
   "dependencies": {
     "axios": "^0.21.4",

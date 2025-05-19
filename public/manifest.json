@@ -4,8 +4,9 @@
   "version": "1.0.0",
   "description": "A Vue.js based Edge extension",
   "action": {
-    "default_popup": "index.html"
+    "default_popup": "popup.html"
   },
+  "options_page": "index.html",
   "permissions": [
     "storage"
   ],

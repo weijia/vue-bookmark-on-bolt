@@ -252,10 +252,7 @@ async function syncTags() {
   const updatedLocalTags = await tagsDB.allDocs({ include_docs: true });
   const tagsArray = updatedLocalTags.rows.map(row => {
     const doc = row.doc;
-    // 反转义ID
-    if (doc && doc.id) {
-      doc.id = unescapeId(doc.id);
-    }
+    // 保持ID的转义状态，不进行反转义
     return doc;
   });
   // 提交 mutation 更新 Vuex 状态
@@ -417,28 +414,59 @@ export async function syncFromWebDAV() {
       loadFromWebDAV('tag.json')
     ]);
     
-    if (remoteBookmarks) {
-      // 合并书签到本地
-      const localBookmarks = await bookmarksDB.allDocs({ include_docs: true });
-      await mergeData(localBookmarks.rows, remoteBookmarks, bookmarksDB);
+    // 使用事务方式处理数据同步
+    const syncData = async () => {
+      if (remoteBookmarks) {
+        try {
+          // 合并书签到本地
+          const localBookmarks = await bookmarksDB.allDocs({ include_docs: true });
+          await mergeData(localBookmarks.rows, remoteBookmarks, bookmarksDB);
+          
+          // 更新Vuex状态
+          const updatedBookmarks = await bookmarksDB.allDocs({ include_docs: true });
+          store.commit('bookmarks/setBookmarks', updatedBookmarks.rows.map(row => row.doc));
+        } catch (error) {
+          console.error('Error syncing bookmarks:', error);
+          // 不立即抛出错误，继续处理标签
+        }
+      }
       
-      // 更新Vuex状态
-      const updatedBookmarks = await bookmarksDB.allDocs({ include_docs: true });
-      store.commit('bookmarks/setBookmarks', updatedBookmarks.rows.map(row => row.doc));
-    }
+      if (remoteTags) {
+        try {
+          // 合并标签到本地
+          const localTags = await tagsDB.allDocs({ include_docs: true });
+          await mergeData(localTags.rows, remoteTags, tagsDB);
+          
+          // 更新Vuex状态
+          const updatedTags = await tagsDB.allDocs({ include_docs: true });
+          store.commit('tags/setTags', updatedTags.rows.map(row => row.doc));
+        } catch (error) {
+          console.error('Error syncing tags:', error);
+          throw error; // 标签同步错误需要抛出，因为标签是关键数据
+        }
+      }
+    };
+
+    // 执行同步并添加重试机制
+    const maxRetries = 3;
+    let retryCount = 0;
     
-    if (remoteTags) {
-      // 合并标签到本地
-      const localTags = await tagsDB.allDocs({ include_docs: true });
-      await mergeData(localTags.rows, remoteTags, tagsDB);
-      
-      // 更新Vuex状态
-      const updatedTags = await tagsDB.allDocs({ include_docs: true });
-      store.commit('tags/setTags', updatedTags.rows.map(row => row.doc));
+    while (retryCount < maxRetries) {
+      try {
+        await syncData();
+        console.log('WebDAV data loaded successfully');
+        return true;
+      } catch (error) {
+        retryCount++;
+        if (retryCount === maxRetries) {
+          console.error(`Failed to sync from WebDAV after ${maxRetries} attempts:`, error);
+          throw error;
+        }
+        console.warn(`Sync attempt ${retryCount} failed, retrying...`);
+        // 指数退避重试
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+      }
     }
-    
-    console.log('WebDAV data loaded successfully');
-    return true;
   } catch (error) {
     console.error('Failed to sync from WebDAV:', error);
     throw error;
@@ -452,27 +480,81 @@ async function mergeData(localItems, remoteItems, db) {
   
   // 处理新增和更新的项目
   for (const [id, remoteItem] of remoteMap) {
-    // 如果是标签数据库且ID包含转义字符，先转义
-    const processedId = (db === tagsDB && id.includes('%5F')) ? unescapeId(id) : id;
-    if (!localMap.has(processedId)) {
-      // 新增项目
-      await db.put({ ...remoteItem, _id: processedId });
-    } else {
-      const localItem = localMap.get(id);
-      // 保留本地创建时间，使用最新的更新时间
-      const createdAt = localItem.createdAt || new Date().toISOString();
-      const updatedAt = remoteItem.updatedAt > localItem.updatedAt ? 
-        remoteItem.updatedAt : localItem.updatedAt;
-      
-      // 合并项目，远程优先
-      await db.put({ 
-        ...localItem,
-        ...remoteItem,
-        _id: id,
-        _rev: localItem._rev,
-        createdAt,
-        updatedAt
-      });
+    // 确保ID不以下划线开头，如果是，则进行转义
+    const processedId = id.startsWith('_') ? escapeId(id) : id;
+    
+    try {
+      if (!localMap.has(processedId)) {
+        // 新增项目
+        await db.put({ 
+          ...remoteItem, 
+          _id: processedId,
+          id: processedId // 确保id字段也使用转义后的ID
+        });
+      } else {
+        const localItem = localMap.get(processedId);
+        
+        // 获取最新的文档版本
+        try {
+          const latestDoc = await db.get(processedId);
+          
+          // 保留本地创建时间，使用最新的更新时间
+          const createdAt = latestDoc.createdAt || localItem.createdAt || new Date().toISOString();
+          const updatedAt = remoteItem.updatedAt > latestDoc.updatedAt ? 
+            remoteItem.updatedAt : latestDoc.updatedAt;
+          
+          // 合并项目，使用最新的版本号
+          await db.put({ 
+            ...latestDoc,
+            ...remoteItem,
+            _id: processedId,
+            id: processedId, // 确保id字段也使用转义后的ID
+            _rev: latestDoc._rev,
+            createdAt,
+            updatedAt
+          });
+        } catch (getError) {
+          if (getError.name === 'not_found') {
+            // 如果文档不存在，创建新文档
+            await db.put({ 
+              ...remoteItem, 
+              _id: processedId,
+              id: processedId
+            });
+          } else {
+            throw getError;
+          }
+        }
+      }
+    } catch (error) {
+      if (error.name === 'conflict') {
+        console.warn(`Conflict detected for document ${processedId}, retrying with latest version...`);
+        // 在冲突情况下重试
+        const retryAttempts = 3;
+        for (let i = 0; i < retryAttempts; i++) {
+          try {
+            const latestDoc = await db.get(processedId);
+            await db.put({
+              ...latestDoc,
+              ...remoteItem,
+              _id: processedId,
+              id: processedId,
+              _rev: latestDoc._rev,
+              updatedAt: new Date().toISOString()
+            });
+            break; // 如果成功，跳出重试循环
+          } catch (retryError) {
+            if (i === retryAttempts - 1) {
+              // 如果所有重试都失败，抛出错误
+              throw new Error(`Failed to resolve conflict for document ${processedId} after ${retryAttempts} attempts`);
+            }
+            // 等待一小段时间后重试
+            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+          }
+        }
+      } else {
+        throw error;
+      }
     }
   }
   
@@ -514,10 +596,10 @@ export async function syncDataToWebDAV() {
 
     const tags = tagsResponse.rows.map(row => {
       const { _id, _rev, ...tag } = row.doc;
-      // 反转义ID
-      const unescapedId = tag.id ? unescapeId(tag.id) : (_id ? unescapeId(_id) : undefined);
+      // 保持ID的转义状态，不进行反转义
+      const tagId = tag.id || _id;
       return {
-        id: unescapedId,
+        id: tagId,
         name: tag.name || '',
         createdAt: tag.createdAt || new Date().toISOString(),
         updatedAt: tag.updatedAt || new Date().toISOString(),

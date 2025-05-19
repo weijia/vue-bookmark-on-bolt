@@ -42,13 +42,76 @@ export async function saveToWebDAV(filename, data) {
     const path = config.path || '/';
     const fullPath = `${path}/${filename}`.replace(/\/+/g, '/');
     
-    await webdavClient.putFileContents(fullPath, JSON.stringify(data, null, 2), {
-      overwrite: true
-    });
+    // 添加重试机制
+    const maxRetries = 3;
+    let retryCount = 0;
+    let lastError = null;
     
-    return true;
+    while (retryCount < maxRetries) {
+      try {
+        // 在保存之前检查文件是否被锁定
+        const stat = await webdavClient.stat(fullPath).catch(() => null);
+        if (stat && stat.props && stat.props.lockdiscovery) {
+          throw { status: 423, message: 'File is locked' };
+        }
+        
+        // 验证数据格式
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid data format: expected array');
+        }
+        
+        // 保存文件
+        await webdavClient.putFileContents(fullPath, JSON.stringify(data, null, 2), {
+          overwrite: true,
+          lockToken: stat?.props?.locktoken
+        });
+        
+        return true;
+      } catch (error) {
+        lastError = error;
+        retryCount++;
+        
+        // 处理特定错误
+        if (error.status === 409) {
+          console.warn(`Conflict detected when saving ${filename}, retrying (${retryCount}/${maxRetries})...`);
+        } else if (error.status === 423) {
+          console.warn(`File ${filename} is locked, retrying (${retryCount}/${maxRetries})...`);
+        } else if (error.status >= 500) {
+          console.warn(`Server error when saving ${filename}, retrying (${retryCount}/${maxRetries})...`);
+        } else if (error.message === 'Invalid data format: expected array') {
+          throw error; // 数据格式错误不需要重试
+        } else {
+          // 对于其他错误，不重试
+          break;
+        }
+        
+        // 指数退避重试
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+        }
+      }
+    }
+    
+    // 如果所有重试都失败
+    if (lastError) {
+      throw lastError;
+    }
+    
+    return false;
   } catch (error) {
     console.error(`Failed to save ${filename} to WebDAV:`, error);
+    
+    // 提供更具体的错误信息
+    if (error.status === 401 || error.status === 403) {
+      throw new Error(`WebDAV authentication error: ${error.message}`);
+    } else if (error.status === 409) {
+      throw new Error(`WebDAV conflict error: ${error.message}`);
+    } else if (error.status === 423) {
+      throw new Error(`WebDAV file lock error: ${error.message}`);
+    } else if (error.status >= 500) {
+      throw new Error(`WebDAV server error: ${error.message}`);
+    }
+    
     throw error;
   }
 }
@@ -65,13 +128,75 @@ export async function loadFromWebDAV(filename) {
     
     const exists = await webdavClient.exists(fullPath);
     if (!exists) {
+      console.warn(`File ${filename} not found on WebDAV server`);
       return null;
     }
     
-    const content = await webdavClient.getFileContents(fullPath, { format: 'text' });
-    return JSON.parse(content);
+    // 添加重试机制
+    const maxRetries = 3;
+    let retryCount = 0;
+    let lastError = null;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const content = await webdavClient.getFileContents(fullPath, { format: 'text' });
+        
+        // 验证JSON格式
+        try {
+          const parsedData = JSON.parse(content);
+          
+          // 验证数据结构
+          if (!Array.isArray(parsedData)) {
+            console.warn(`Invalid data format in ${filename}, expected array`);
+            return [];
+          }
+          
+          return parsedData;
+        } catch (parseError) {
+          console.error(`Error parsing ${filename} from WebDAV:`, parseError);
+          return [];
+        }
+      } catch (error) {
+        lastError = error;
+        retryCount++;
+        
+        // 处理特定错误
+        if (error.status === 409) {
+          console.warn(`Conflict detected when loading ${filename}, retrying (${retryCount}/${maxRetries})...`);
+        } else if (error.status === 423) {
+          console.warn(`File ${filename} is locked, retrying (${retryCount}/${maxRetries})...`);
+        } else if (error.status >= 500) {
+          console.warn(`Server error when loading ${filename}, retrying (${retryCount}/${maxRetries})...`);
+        } else {
+          // 对于其他错误，不重试
+          break;
+        }
+        
+        // 指数退避重试
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+        }
+      }
+    }
+    
+    // 如果所有重试都失败
+    if (lastError) {
+      throw lastError;
+    }
+    
+    return null;
   } catch (error) {
     console.error(`Failed to load ${filename} from WebDAV:`, error);
+    
+    // 提供更具体的错误信息
+    if (error.status === 401 || error.status === 403) {
+      throw new Error(`WebDAV authentication error: ${error.message}`);
+    } else if (error.status === 409) {
+      throw new Error(`WebDAV conflict error: ${error.message}`);
+    } else if (error.status >= 500) {
+      throw new Error(`WebDAV server error: ${error.message}`);
+    }
+    
     throw error;
   }
 }
