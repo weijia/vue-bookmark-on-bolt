@@ -190,22 +190,64 @@ const actions = {
     }
   },
   
-  async syncToWebDAV({ state, rootState }) {
+  async syncToWebDAV({ state, rootState, dispatch }) {
     try {
-      // 获取所有书签，移除PouchDB特定字段
-      const bookmarks = state.bookmarks.map(bookmark => {
+      // 获取本地数据，移除PouchDB特定字段
+      const localBookmarks = state.bookmarks.map(bookmark => {
         const { _id, _rev, ...cleanBookmark } = bookmark;
         return cleanBookmark;
       });
-
-      // 获取所有标签
-      const tags = rootState.tags.tags.map(tag => {
+      
+      const localTags = rootState.tags.tags.map(tag => {
         const { _id, _rev, ...cleanTag } = tag;
         return cleanTag;
       });
 
-      // 同步到WebDAV
-      await syncDataToWebDAV(bookmarks, tags);
+      // 从WebDAV加载远程数据
+      let remoteBookmarks = [];
+      let remoteTags = [];
+      try {
+        const remoteData = await dispatch('loadFromWebDAV');
+        remoteBookmarks = remoteData?.bookmarks || [];
+        remoteTags = remoteData?.tags || [];
+      } catch (error) {
+        console.warn('Error loading from WebDAV:', error);
+      }
+
+      // 合并数据
+      const mergeItems = (localItems, remoteItems) => {
+        const mergedMap = new Map();
+        
+        // 先添加远程数据
+        remoteItems.forEach(item => {
+          if (item && item.id) {
+            mergedMap.set(item.id, { ...item });
+          }
+        });
+        
+        // 然后添加或更新本地数据
+        localItems.forEach(item => {
+          if (item && item.id) {
+            const existingItem = mergedMap.get(item.id);
+            if (!existingItem || 
+                (item.updatedAt && existingItem.updatedAt && 
+                 new Date(item.updatedAt) > new Date(existingItem.updatedAt))) {
+              mergedMap.set(item.id, { ...item });
+            }
+          }
+        });
+        
+        return Array.from(mergedMap.values());
+      };
+      
+      const mergedBookmarks = mergeItems(localBookmarks, remoteBookmarks);
+      const mergedTags = mergeItems(localTags, remoteTags);
+      
+      console.log(`Merged data: bookmarks(${localBookmarks.length} local + ${remoteBookmarks.length} remote = ${mergedBookmarks.length} merged)`);
+      console.log(`Merged data: tags(${localTags.length} local + ${remoteTags.length} remote = ${mergedTags.length} merged)`);
+
+      // 保存合并后的数据到WebDAV
+      await syncDataToWebDAV(mergedBookmarks, mergedTags);
       
       return true;
     } catch (error) {
