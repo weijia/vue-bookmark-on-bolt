@@ -1,4 +1,5 @@
 import { tagsDB, syncDataToWebDAV } from '../../services/storage';
+import { escapeId } from '../../utils/idEscape';
 
 const state = {
   tags: [],
@@ -22,9 +23,9 @@ const getters = {
       count: tagCounts[tag.id] || 0
     }))
   },
-  
   tagById: state => id => {
-    return state.tags.find(tag => tag.id === id);
+    const escapedId = escapeId(id)
+    return state.tags.find(tag => tag.id === escapedId);
   }
 };
 
