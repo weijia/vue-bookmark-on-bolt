@@ -12,17 +12,7 @@ export default {
       showResetModal: false,
       showPouchDBModal: false,
       showWebDAVModal: false,
-      remoteStorage: null,
       webdav: null,
-      syncBackends: {
-        remoteStorage: 'disconnected',
-        webdav: 'disconnected'
-      },
-      syncTimes: {
-        remoteStorage: null,
-        webdav: null
-      },
-      currentBackend: null,
       pouchDBConfig: {
         remoteUrl: '',
         username: '',
@@ -39,9 +29,7 @@ export default {
       },
       webdavStatus: null,
       isTesting: false,
-      isSaving: false,
-      syncStatus: 'disconnected', // disconnected, syncing, connected, error
-      lastSyncTime: null
+      isSaving: false
     }
   },
   computed: {
@@ -53,10 +41,11 @@ export default {
       const statusMap = {
         disconnected: 'Not connected',
         syncing: 'Syncing...',
-        connected: this.lastSyncTime ? `Last synced: ${this.formatTime(this.lastSyncTime)}` : 'Connected',
+        connected: this.$store.getters['sync/lastSyncTime']('remoteStorage') ? 
+          `Last synced: ${this.formatTime(this.$store.getters['sync/lastSyncTime']('remoteStorage'))}` : 'Connected',
         error: 'Sync error'
       }
-      return statusMap[this.syncStatus]
+      return statusMap[this.$store.getters['sync/syncStatus']('remoteStorage')]
     }
   },
   created() {
@@ -89,36 +78,6 @@ export default {
     this.remoteStorageSync = getSyncFunction(SyncBackend.REMOTE_STORAGE);
     this.webdavSync = getSyncFunction(SyncBackend.WEBDAV);
     this.importSync = getSyncFunction(SyncBackend.IMPORT);
-
-    try {
-      // 创建RemoteStorage实例
-      const { default: RemoteStorage } = await import('remotestoragejs');
-      this.remoteStorage = new RemoteStorage({
-        logging: false,
-        cache: true
-      });
-
-      // 声明访问权限（不要使用前导斜杠）
-      this.remoteStorage.access.claim('bookmarks', 'rw');
-      this.remoteStorage.access.claim('tags', 'rw');
-
-      // 初始化存储模块
-    //   this.remoteStorage.bookmarks = this.remoteStorage.scope('/bookmarks');
-    //   this.remoteStorage.tags = this.remoteStorage.scope('/tags');
-
-      // 初始化RemoteStorage
-      this.remoteStorageSync.init(this);
-      
-      // 挂载RemoteStorage Widget
-      const { attachWidget } = getSyncFunction(SyncBackend.REMOTE_STORAGE);
-      await attachWidget(this, 'remoteStorageElementId');
-    } catch (error) {
-      console.error('Failed to initialize RemoteStorage:', error);
-      this.$store.commit('notification/setNotification', {
-        type: 'error',
-        message: 'Failed to initialize RemoteStorage: ' + error.message
-      });
-    }
 
     // 加载保存的WebDAV配置
     const savedWebDAVConfig = localStorage.getItem('webdavConfig');
@@ -522,9 +481,19 @@ export default {
     },
 
     async updateSyncStatus() {
-      const status = await getSyncStatus()
-      this.syncStatus = status.status
-      this.lastSyncTime = status.lastSync
+      try {
+        const status = await getSyncStatus();
+        this.$store.commit('sync/setSyncStatus', { 
+          backend: 'remoteStorage', 
+          status: status.status 
+        });
+        this.$store.commit('sync/setSyncTime', { 
+          backend: 'remoteStorage', 
+          time: status.lastSync 
+        });
+      } catch (error) {
+        console.error('Failed to update sync status:', error);
+      }
     },
 
     formatTime(timestamp) {

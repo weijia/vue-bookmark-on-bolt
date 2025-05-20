@@ -3,6 +3,7 @@ import Vuex from 'vuex'
 import bookmarks from './modules/bookmarks'
 import tags from './modules/tags'
 import notification from './modules/notification'
+import sync from './modules/sync'
 import { syncFromWebDAV } from '../services/storage'
 
 Vue.use(Vuex)

@@ -6,8 +6,14 @@ import './assets/css/styles.css'
 
 Vue.config.productionTip = false
 
-new Vue({
+const vm = new Vue({
   router,
   store,
   render: h => h(App)
 }).$mount('#app')
+
+// 初始化同步
+store.dispatch('sync/initializeSync')
+  .catch(error => {
+    console.error('Failed to initialize sync:', error)
+  })
