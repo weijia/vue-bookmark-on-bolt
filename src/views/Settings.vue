@@ -359,6 +359,9 @@ export default {
       showResetModal: false,
       showPouchDBModal: false,
       showWebDAVModal: false,
+      remoteStorage: null,
+      syncStatus: 'disconnected', // 'disconnected', 'connecting', 'connected', 'syncing', 'error'
+      lastSyncTime: null,
       pouchDBConfig: {
         remoteUrl: '',
         username: '',
@@ -422,10 +425,37 @@ export default {
   },
   mounted() {
     // 初始化 RemoteStorage
-    const remoteStorage = new RemoteStorage();
+    this.remoteStorage = new RemoteStorage({
+      logging: false,
+      cache: true
+    });
+    
     // 声明访问权限
-    remoteStorage.access.claim('bookmarks', 'rw');
-    remoteStorage.access.claim('tags', 'rw');
+    this.remoteStorage.access.claim('bookmarks', 'rw');
+    this.remoteStorage.access.claim('tags', 'rw');
+
+    // 设置事件监听器
+    this.remoteStorage.on('ready', () => {
+      console.log('RemoteStorage ready');
+      this.syncStatus = 'connected';
+      this.syncWithRemoteStorage();
+    });
+
+    this.remoteStorage.on('connected', () => {
+      console.log('RemoteStorage connected');
+      this.syncStatus = 'connected';
+      this.syncWithRemoteStorage();
+    });
+
+    this.remoteStorage.on('disconnected', () => {
+      console.log('RemoteStorage disconnected');
+      this.syncStatus = 'disconnected';
+    });
+
+    this.remoteStorage.on('error', (err) => {
+      console.error('RemoteStorage error:', err);
+      this.syncStatus = 'error';
+    });
 
     // 获取 URL 中的 access_token
     const urlParams = new URLSearchParams(window.location.search);
@@ -433,16 +463,14 @@ export default {
 
     if (accessToken) {
       // 让 remotestorage 处理 access_token
-      remoteStorage.remote.connect(accessToken);
-      // 可考虑移除 URL 中的 access_token，避免泄露
+      this.remoteStorage.remote.connect(accessToken);
+      // 移除 URL 中的 access_token，避免泄露
       const newUrl = window.location.href.split('?')[0];
       window.history.replaceState({}, document.title, newUrl);
     }
 
     // 初始化 RemoteStorage Widget
-    const widget = new Widget(remoteStorage);
-    // 挂载 Widget
-    //console.log(this.$refs.remoteStorageElement)
+    const widget = new Widget(this.remoteStorage);
     widget.attach('remoteStorageElementId');
   },
   methods: {
@@ -694,7 +722,36 @@ export default {
     },
 
     showRemoteStorageWidget() {
-      remoteStorage.connect()
+      if (this.remoteStorage) {
+        this.remoteStorage.connect();
+      }
+    },
+
+    async syncWithRemoteStorage() {
+      if (!this.remoteStorage || !this.remoteStorage.remote.connected) {
+        return;
+      }
+
+      try {
+        this.syncStatus = 'syncing';
+        
+        // 同步书签
+        const bookmarksClient = this.remoteStorage.scope('/bookmarks');
+        const remoteBookmarks = await bookmarksClient.getAll();
+        await this.$store.dispatch('bookmarks/syncWithRemote', remoteBookmarks);
+        
+        // 同步标签
+        const tagsClient = this.remoteStorage.scope('/tags');
+        const remoteTags = await tagsClient.getAll();
+        await this.$store.dispatch('tags/syncWithRemote', remoteTags);
+        
+        // 更新同步状态
+        this.syncStatus = 'connected';
+        this.lastSyncTime = Date.now();
+      } catch (error) {
+        console.error('Sync error:', error);
+        this.syncStatus = 'error';
+      }
     },
     
     async testWebDAVConnection() {

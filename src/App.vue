@@ -152,7 +152,7 @@ export default {
         
         const webdavConfig = JSON.parse(localStorage.getItem('webdavConfig'));
         if (!webdavConfig) {
-          console.warn('WebDAV configuration not found');
+          console.log('WebDAV configuration not found');
           this.syncStatus = 'error';
           return;
         }
