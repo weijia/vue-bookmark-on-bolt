@@ -131,7 +131,7 @@ export default {
           // 尝试连接WebDAV
           this.connectWebDAV(config).catch(error => {
             console.error('Failed to reconnect to WebDAV:', error);
-            this.$store.commit('setNotification', {
+            this.$store.commit('notification/setNotification', {
               type: 'warning',
               message: 'WebDAV重连失败，请检查配置'
             });
@@ -186,19 +186,19 @@ export default {
         if (this.currentBackend) {
           try {
             await this.sync(this.currentBackend);
-            this.$store.commit('setNotification', {
+            this.$store.commit('notification/setNotification', {
               type: 'success',
               message: `导入成功！已导入 ${result.bookmarksCount} 个书签和 ${result.tagsCount} 个标签，并已同步到${this.currentBackend}`
             });
           } catch (syncError) {
             console.error('Sync error:', syncError);
-            this.$store.commit('setNotification', {
+            this.$store.commit('notification/setNotification', {
               type: 'warning',
               message: `导入成功但同步失败！已导入 ${result.bookmarksCount} 个书签和 ${result.tagsCount} 个标签，但同步到${this.currentBackend}失败`
             });
           }
         } else {
-          this.$store.commit('setNotification', {
+          this.$store.commit('notification/setNotification', {
             type: 'success',
             message: `导入成功！已导入 ${result.bookmarksCount} 个书签和 ${result.tagsCount} 个标签`
           });
@@ -206,14 +206,14 @@ export default {
 
         if (result.warnings && result.warnings.length > 0) {
           console.warn('Import warnings:', result.warnings);
-          this.$store.commit('setNotification', {
+          this.$store.commit('notification/setNotification', {
             type: 'info',
             message: `导入过程中有 ${result.warnings.length} 个警告，请查看控制台了解详情`
           });
         }
       } catch (error) {
         console.error('Import error:', error);
-        this.$store.commit('setNotification', {
+        this.$store.commit('notification/setNotification', {
           type: 'error',
           message: `导入失败: ${error.message}`
         });
@@ -411,14 +411,14 @@ export default {
         this.syncBackends[backend] = 'connected';
         this.syncTimes[backend] = Date.now();
         
-        this.$store.commit('setNotification', {
+        this.$store.commit('notification/setNotification', {
           type: 'success',
           message: `${backend}同步成功`
         });
       } catch (error) {
         console.error(`${backend} sync error:`, error);
         this.syncBackends[backend] = 'error';
-        this.$store.commit('setNotification', {
+        this.$store.commit('notification/setNotification', {
           type: 'error',
           message: `${backend}同步失败: ${error.message}`
         });

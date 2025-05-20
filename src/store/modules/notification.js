@@ -13,7 +13,7 @@ const mutations = {
 
 const actions = {
   showNotification({ commit }, payload) {
-    commit('setNotification', payload)
+    commit('notification/setNotification', payload)
     setTimeout(() => {
       commit('clearNotification')
     }, 5000)
