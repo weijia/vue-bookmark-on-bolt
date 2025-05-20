@@ -406,14 +406,14 @@ export async function syncFromWebDAV() {
     console.warn('WebDAV is not enabled or configured');
     return false;
   }
-  
+
   try {
     // 从WebDAV加载书签和标签
     const [remoteBookmarks, remoteTags] = await Promise.all([
       loadFromWebDAV('collection.json'),
       loadFromWebDAV('tag.json')
     ]);
-    
+
     // 使用事务方式处理数据同步
     const syncData = async () => {
       if (remoteBookmarks) {
@@ -421,7 +421,7 @@ export async function syncFromWebDAV() {
           // 合并书签到本地
           const localBookmarks = await bookmarksDB.allDocs({ include_docs: true });
           await mergeData(localBookmarks.rows, remoteBookmarks, bookmarksDB);
-          
+
           // 更新Vuex状态
           const updatedBookmarks = await bookmarksDB.allDocs({ include_docs: true });
           store.commit('bookmarks/setBookmarks', updatedBookmarks.rows.map(row => row.doc));
@@ -430,7 +430,7 @@ export async function syncFromWebDAV() {
           // 不立即抛出错误，继续处理标签
         }
       }
-      
+
       if (remoteTags) {
         try {
           // 合并标签到本地
@@ -450,7 +450,7 @@ export async function syncFromWebDAV() {
     // 执行同步并添加重试机制
     const maxRetries = 3;
     let retryCount = 0;
-    
+
     while (retryCount < maxRetries) {
       try {
         await syncData();
