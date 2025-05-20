@@ -37,6 +37,9 @@ export default {
       allBookmarks: 'bookmarks/allBookmarks',
       allTags: 'tags/allTags'
     }),
+    syncStatus() {
+      return this.$store.getters['sync/syncStatus']('remoteStorage')
+    },
     syncStatusText() {
       const statusMap = {
         disconnected: 'Not connected',
@@ -78,6 +81,34 @@ export default {
     this.remoteStorageSync = getSyncFunction(SyncBackend.REMOTE_STORAGE);
     this.webdavSync = getSyncFunction(SyncBackend.WEBDAV);
     this.importSync = getSyncFunction(SyncBackend.IMPORT);
+
+    // 初始化并附加RemoteStorage widget
+    if (this.remoteStorageSync) {
+      try {
+        // 确保RemoteStorage库已加载
+        const RemoteStorage = (await import('remotestoragejs')).default;
+        
+        // 创建RemoteStorage实例
+        this.remoteStorage = new RemoteStorage({
+          logging: false,
+          changeEvents: ['local', 'window', 'remote']
+        });
+        
+        // 初始化RemoteStorage实例
+        this.remoteStorage = this.remoteStorageSync.init(this);
+        
+        // 然后附加widget
+        if (this.remoteStorageSync.attachWidget) {
+          this.remoteStorageSync.attachWidget(this);
+        }
+      } catch (error) {
+        console.error('Failed to initialize RemoteStorage:', error);
+        this.$store.commit('notification/setNotification', {
+          type: 'error',
+          message: 'Failed to initialize RemoteStorage: ' + error.message
+        });
+      }
+    }
 
     // 加载保存的WebDAV配置
     const savedWebDAVConfig = localStorage.getItem('webdavConfig');
@@ -343,11 +374,18 @@ export default {
     // RemoteStorage方法
     showRemoteStorageWidget() {
       try {
-        if (this.remoteStorage) {
-          this.remoteStorageSync.connect(this);
-        } else {
-          throw new Error('RemoteStorage not initialized');
+        if (!this.remoteStorageSync) {
+          throw new Error('RemoteStorage sync service not available');
         }
+        
+        // Ensure RemoteStorage is initialized
+        if (!this.remoteStorage) {
+          this.remoteStorage = this.remoteStorageSync.init(this);
+        }
+        
+        // Connect and show widget
+        this.remoteStorageSync.connect(this);
+        
       } catch (error) {
         console.error('Failed to show RemoteStorage widget:', error);
         this.$store.commit('notification/setNotification', {

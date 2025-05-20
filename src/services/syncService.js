@@ -74,25 +74,24 @@ async function attachRemoteStorageWidget(vm, elementId) {
   }
 }
 
-async function syncWithRemoteStorage(vm) {
-  if (!vm.remoteStorage?.remote.connected) {
+async function syncWithRemoteStorage(state) {
+  if (!state.remoteStorage?.remote.connected) {
     throw new Error('RemoteStorage not connected');
   }
 
   try {
-    // 确保文件夹存在
-    // await ensureRemoteFolder(vm.remoteStorage, 'bookmarks');
-    // await ensureRemoteFolder(vm.remoteStorage, 'tags');
-
     // 同步书签
-    const bookmarksClient = vm.remoteStorage.scope('/bookmarks/');
+    const bookmarksClient = state.remoteStorage.scope('/bookmarks/');
     const remoteBookmarks = await bookmarksClient.getAll();
-    await vm.$store.dispatch('bookmarks/syncWithRemote', remoteBookmarks);
-
+    
     // 同步标签
-    const tagsClient = vm.remoteStorage.scope('/tags/');
+    const tagsClient = state.remoteStorage.scope('/tags/');
     const remoteTags = await tagsClient.getAll();
-    await vm.$store.dispatch('tags/syncWithRemote', remoteTags);
+    
+    return {
+      bookmarks: remoteBookmarks,
+      tags: remoteTags
+    };
   } catch (error) {
     console.error('RemoteStorage sync error:', error);
     throw new Error(`RemoteStorage sync failed: ${error.message}`);

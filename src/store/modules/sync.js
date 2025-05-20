@@ -39,8 +39,8 @@ export default {
         });
         
         // 声明访问权限
-        remoteStorage.access.claim('/bookmarks', 'rw');
-        remoteStorage.access.claim('/tags', 'rw');
+        remoteStorage.access.claim('bookmarks', 'rw');
+        remoteStorage.access.claim('tags', 'rw');
         
         commit('setRemoteStorage', remoteStorage);
         
@@ -75,12 +75,17 @@ export default {
         throw error;
       }
     },
-    async sync({ state, commit }, backend) {
+    async sync({ state, commit, dispatch }, backend) {
       try {
         commit('setSyncStatus', { backend, status: 'syncing' });
         
         const syncFunction = getSyncFunction(backend);
-        await syncFunction.sync(state);
+        const syncData = await syncFunction.sync(state);
+        
+        if (backend === 'remoteStorage') {
+          await dispatch('bookmarks/syncWithRemote', syncData.bookmarks, { root: true });
+          await dispatch('tags/syncWithRemote', syncData.tags, { root: true });
+        }
         
         commit('setSyncStatus', { backend, status: 'connected' });
         commit('setSyncTime', { backend, time: Date.now() });

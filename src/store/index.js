@@ -12,7 +12,8 @@ const store = new Vuex.Store({
   modules: {
     bookmarks,
     tags,
-    notification
+    notification,
+    sync
   }
 })
 
