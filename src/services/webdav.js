@@ -19,6 +19,22 @@ function checkInitialization() {
   }
 }
 
+export function renameKeysInArray(data, mapping) {
+  return data.map(obj => {
+    const renamedObj = {};
+
+    for (let key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        // 如果存在映射，使用新键名；否则保留原键名
+        const newKey = mapping.hasOwnProperty(key) ? mapping[key] : key;
+        renamedObj[newKey] = obj[key];
+      }
+    }
+
+    return renamedObj;
+  });
+}
+
 export async function initializeWebDAV(config) {
   if (initializationPromise) {
     return initializationPromise;
@@ -53,8 +69,8 @@ export async function initializeWebDAV(config) {
 
       // 测试连接
       try {
-        const testUrl = new URL(config.url).pathname || '/';
-        const exists = await webdavClient.exists(testUrl);
+        // const testUrl = new URL(config.url).pathname || '/';
+        const exists = await webdavClient.exists('/');
         if (!exists) {
           throw new Error('WebDAV server not accessible');
         }
@@ -166,7 +182,9 @@ export async function saveToWebDAV(filename, localData) {
           remoteData = [];
         }
 
-        const mergedData = mergeData(localData, remoteData);
+        const transformedLocalData = renameKeysInArray(localData, {title: "name"})
+
+        const mergedData = mergeData(transformedLocalData, remoteData);
         console.log(`Merged data: local(${localData.length}) + remote(${remoteData.length}) = merged(${mergedData.length})`);
 
         await webdavClient.putFileContents(fullPath, JSON.stringify(mergedData, null, 2), {
@@ -177,7 +195,7 @@ export async function saveToWebDAV(filename, localData) {
       } catch (error) {
         lastError = error;
         retryCount++;
-        
+
         if (error.status === 409) {
           console.warn(`Conflict detected when saving ${filename}, retrying (${retryCount}/${maxRetries})...`);
         } else if (error.status === 423) {
@@ -186,7 +204,7 @@ export async function saveToWebDAV(filename, localData) {
           console.warn(`Server error when saving ${filename}, retrying (${retryCount}/${maxRetries})...`);
         } else if (error.message.includes('405')) {
           try {
-            await webdavClient.request('PUT', fullPath, JSON.stringify(localData, null, 2), {
+            await webdavClient.request('PUT', fullPath, JSON.stringify(transformedLocalData, null, 2), {
               'Content-Type': 'application/json'
             });
             return true;
@@ -197,21 +215,21 @@ export async function saveToWebDAV(filename, localData) {
         } else {
           break;
         }
-        
+
         if (retryCount < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
         }
       }
     }
-    
+
     if (lastError) {
       throw lastError;
     }
-    
+
     return false;
   } catch (error) {
     console.error(`Failed to save ${filename} to WebDAV:`, error);
-    
+
     if (error.status === 401 || error.status === 403) {
       throw new Error(`WebDAV authentication error: ${error.message}`);
     } else if (error.status === 409) {
@@ -255,10 +273,11 @@ export async function loadFromWebDAV(filename) {
 
     while (retryCount < maxRetries) {
       try {
-        const content = await webdavClient.getFileContents(fullPath, { format: 'json' });
+        const content = await webdavClient.getFileContents(fullPath, { format: 'text' });
+        // console.log(content)
 
         try {
-          const parsedData = JSON.parse(content);
+          const parsedData = content; //JSON.parse(content);
 
           if (!Array.isArray(parsedData)) {
             console.warn(`Invalid data format in ${filename}, expected array`);

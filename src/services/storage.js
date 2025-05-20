@@ -3,7 +3,7 @@ import { escapeId, unescapeId } from '../utils/idEscape';
 import RemoteStorage from 'remotestoragejs';
 import Widget from 'remotestorage-widget';
 import store from '../store'; // 导入 Vuex store
-import { configureWebDAV, syncToWebDAV, loadFromWebDAV } from './webdav';
+import { configureWebDAV, syncToWebDAV, loadFromWebDAV, renameKeysInArray } from './webdav';
 
 // Initialize PouchDB
 const bookmarksDB = new PouchDB('bookmarks');
@@ -402,10 +402,10 @@ export async function setupWebDAVSync(config) {
 
 // 从WebDAV服务器加载数据
 export async function syncFromWebDAV() {
-  if (!webdavEnabled || !webdavConfig) {
-    console.warn('WebDAV is not enabled or configured');
-    return false;
-  }
+  // if (!webdavEnabled || !webdavConfig) {
+  //   console.warn('WebDAV is not enabled or configured');
+  //   return false;
+  // }
 
   try {
     // 从WebDAV加载书签和标签
@@ -418,9 +418,10 @@ export async function syncFromWebDAV() {
     const syncData = async () => {
       if (remoteBookmarks) {
         try {
+          const transformedRemoteBookmarks = renameKeysInArray(remoteBookmarks, {name: "title"})
           // 合并书签到本地
           const localBookmarks = await bookmarksDB.allDocs({ include_docs: true });
-          await mergeData(localBookmarks.rows, remoteBookmarks, bookmarksDB);
+          await mergeData(localBookmarks.rows, transformedRemoteBookmarks, bookmarksDB);
 
           // 更新Vuex状态
           const updatedBookmarks = await bookmarksDB.allDocs({ include_docs: true });
@@ -436,7 +437,7 @@ export async function syncFromWebDAV() {
           // 合并标签到本地
           const localTags = await tagsDB.allDocs({ include_docs: true });
           await mergeData(localTags.rows, remoteTags, tagsDB);
-          
+
           // 更新Vuex状态
           const updatedTags = await tagsDB.allDocs({ include_docs: true });
           store.commit('tags/setTags', updatedTags.rows.map(row => row.doc));
@@ -502,11 +503,16 @@ async function mergeData(localItems, remoteItems, db) {
           const createdAt = latestDoc.createdAt || localItem.createdAt || new Date().toISOString();
           const updatedAt = remoteItem.updatedAt > latestDoc.updatedAt ? 
             remoteItem.updatedAt : latestDoc.updatedAt;
-          
+          var finalItem = latestDoc;
+          if(remoteItem.updatedAt > latestDoc.updatedAt) {
+            console.log(latestDoc, remoteItem)
+            finalItem = remoteItem;
+          }
+
           // 合并项目，使用最新的版本号
-          await db.put({ 
-            ...latestDoc,
-            ...remoteItem,
+          await db.put({
+            ...finalItem,
+            // ...remoteItem,
             _id: processedId,
             id: processedId, // 确保id字段也使用转义后的ID
             _rev: latestDoc._rev,
@@ -572,12 +578,12 @@ export async function syncDataToWebDAV() {
     console.warn('WebDAV is not enabled or configured');
     return false;
   }
-  
+
   try {
     // 获取最新的书签和标签数据
     const bookmarksResponse = await bookmarksDB.allDocs({ include_docs: true });
     const tagsResponse = await tagsDB.allDocs({ include_docs: true });
-    
+
     // 转换数据格式
     const bookmarks = bookmarksResponse.rows.map(row => {
       const { _id, _rev, ...bookmark } = row.doc;

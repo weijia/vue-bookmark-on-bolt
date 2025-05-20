@@ -70,6 +70,8 @@ class WebDAVClient {
   async exists(path) {
     try {
       // 使用 HEAD 请求代替 PROPFIND
+      path = path.replace(/^\/+/g, '');
+      console.log("before calling fetch", new URL(path, this.baseURL).href)
       const response = await fetch(new URL(path, this.baseURL).href, {
         method: 'HEAD',
         headers: {
@@ -78,6 +80,7 @@ class WebDAVClient {
         mode: 'cors',
         credentials: 'omit'
       });
+      console.log("after calling fetch", response)
       return response.ok;
     } catch (error) {
       console.log('Error checking existence:', error);
