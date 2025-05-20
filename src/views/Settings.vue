@@ -344,8 +344,15 @@
 </template>
 
 <script>
-import RemoteStorage from 'remotestoragejs';
-import Widget from 'remotestorage-widget';
+import {
+  createRemoteStorageInstance,
+  setupRemoteStorageAccess,
+  setupEventListeners,
+  handleAccessToken,
+  attachWidget,
+  syncBookmarks,
+  syncTags
+} from '@/utils/remoteStorageSync';
 import { mapGetters } from 'vuex';
 import { configurePouchDBSync, getSyncStatus, syncTags, syncBookmarks, setupWebDAVSync, syncDataToWebDAV } from '../services/storage';
 import { escapeId } from '../utils/idEscape';
@@ -425,53 +432,36 @@ export default {
   },
   mounted() {
     // 初始化 RemoteStorage
-    this.remoteStorage = new RemoteStorage({
-      logging: false,
-      cache: true
-    });
-    
-    // 声明访问权限
-    this.remoteStorage.access.claim('bookmarks', 'rw');
-    this.remoteStorage.access.claim('tags', 'rw');
+    this.remoteStorage = createRemoteStorageInstance();
+    setupRemoteStorageAccess(this.remoteStorage);
 
     // 设置事件监听器
-    this.remoteStorage.on('ready', () => {
-      console.log('RemoteStorage ready');
-      this.syncStatus = 'connected';
-      this.syncWithRemoteStorage();
+    setupEventListeners(this.remoteStorage, {
+      onReady: () => {
+        console.log('RemoteStorage ready');
+        this.syncStatus = 'connected';
+        this.syncWithRemoteStorage();
+      },
+      onConnected: () => {
+        console.log('RemoteStorage connected');
+        this.syncStatus = 'connected';
+        this.syncWithRemoteStorage();
+      },
+      onDisconnected: () => {
+        console.log('RemoteStorage disconnected');
+        this.syncStatus = 'disconnected';
+      },
+      onError: (err) => {
+        console.error('RemoteStorage error:', err);
+        this.syncStatus = 'error';
+      }
     });
 
-    this.remoteStorage.on('connected', () => {
-      console.log('RemoteStorage connected');
-      this.syncStatus = 'connected';
-      this.syncWithRemoteStorage();
-    });
+    // 处理 access_token
+    handleAccessToken(this.remoteStorage);
 
-    this.remoteStorage.on('disconnected', () => {
-      console.log('RemoteStorage disconnected');
-      this.syncStatus = 'disconnected';
-    });
-
-    this.remoteStorage.on('error', (err) => {
-      console.error('RemoteStorage error:', err);
-      this.syncStatus = 'error';
-    });
-
-    // 获取 URL 中的 access_token
-    const urlParams = new URLSearchParams(window.location.search);
-    const accessToken = urlParams.get('access_token');
-
-    if (accessToken) {
-      // 让 remotestorage 处理 access_token
-      this.remoteStorage.remote.connect(accessToken);
-      // 移除 URL 中的 access_token，避免泄露
-      const newUrl = window.location.href.split('?')[0];
-      window.history.replaceState({}, document.title, newUrl);
-    }
-
-    // 初始化 RemoteStorage Widget
-    const widget = new Widget(this.remoteStorage);
-    widget.attach('remoteStorageElementId');
+    // 挂载 Widget
+    attachWidget(this.remoteStorage, 'remoteStorageElementId');
   },
   methods: {
     toggleDarkMode() {
@@ -734,18 +724,8 @@ export default {
 
       try {
         this.syncStatus = 'syncing';
-        
-        // 同步书签
-        const bookmarksClient = this.remoteStorage.scope('/bookmarks');
-        const remoteBookmarks = await bookmarksClient.getAll();
-        await this.$store.dispatch('bookmarks/syncWithRemote', remoteBookmarks);
-        
-        // 同步标签
-        const tagsClient = this.remoteStorage.scope('/tags');
-        const remoteTags = await tagsClient.getAll();
-        await this.$store.dispatch('tags/syncWithRemote', remoteTags);
-        
-        // 更新同步状态
+        await syncBookmarks(this.remoteStorage, this.$store);
+        await syncTags(this.remoteStorage, this.$store);
         this.syncStatus = 'connected';
         this.lastSyncTime = Date.now();
       } catch (error) {
