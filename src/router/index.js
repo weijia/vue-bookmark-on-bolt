@@ -2,7 +2,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import BookmarkManager from '../views/BookmarkManager.vue'
 import TagManager from '../views/TagManager.vue'
-import Settings from '../views/Settings.vue'
+import Settings from '../views/Settings/index.vue'
 import { getEnvironmentConfig } from '../utils/environment'
 
 Vue.use(VueRouter)

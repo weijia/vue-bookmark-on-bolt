@@ -27,6 +27,7 @@
     "@types/chrome": "^0.0.323",
     "@vitejs/plugin-vue2": "^2.2.0",
     "bestzip": "^2.2.1",
+    "sass-embedded": "^1.89.0",
     "vite": "^5.4.2"
   }
 }

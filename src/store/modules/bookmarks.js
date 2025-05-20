@@ -256,6 +256,89 @@ const actions = {
     }
   },
 
+  async syncWithRemote({ commit, state }, remoteBookmarks) {
+    try {
+      commit('setLoading', true);
+      console.log('Syncing bookmarks with RemoteStorage:', remoteBookmarks);
+      
+      // 如果remoteBookmarks是空的，直接返回
+      if (!remoteBookmarks || Object.keys(remoteBookmarks).length === 0) {
+        console.log('No remote bookmarks to sync');
+        return { added: 0, updated: 0, unchanged: 0 };
+      }
+      
+      // 处理远程书签数据
+      const remoteBookmarksArray = Object.values(remoteBookmarks);
+      console.log(`Processing ${remoteBookmarksArray.length} remote bookmarks`);
+      
+      let added = 0;
+      let updated = 0;
+      let unchanged = 0;
+      
+      // 处理每个远程书签
+      for (const remoteBookmark of remoteBookmarksArray) {
+        try {
+          // 检查书签数据是否有效
+          if (!remoteBookmark.id) {
+            console.warn('Skipping invalid remote bookmark (missing id):', remoteBookmark);
+            continue;
+          }
+          
+          // 检查书签是否已存在
+          const existingBookmark = state.bookmarks.find(b => b.id === remoteBookmark.id);
+          
+          if (!existingBookmark) {
+            // 添加新书签 - 确保所有必需字段都存在
+            const newBookmark = {
+              _id: remoteBookmark.id,
+              id: remoteBookmark.id,
+              name: remoteBookmark.name || '未命名书签',
+              url: remoteBookmark.url || '',
+              tags: remoteBookmark.tags || [],
+              createdAt: remoteBookmark.createdAt || new Date().toISOString(),
+              updatedAt: remoteBookmark.updatedAt || new Date().toISOString()
+            };
+            
+            await bookmarksDB.put(newBookmark);
+            commit('addBookmark', newBookmark);
+            added++;
+          } else {
+            // 比较更新时间，决定是否更新
+            const remoteUpdatedAt = new Date(remoteBookmark.updatedAt || 0);
+            const localUpdatedAt = new Date(existingBookmark.updatedAt || 0);
+            
+            if (remoteUpdatedAt > localUpdatedAt) {
+              // 远程版本更新，更新本地
+              const updatedBookmark = {
+                ...existingBookmark,
+                ...remoteBookmark,
+                _id: existingBookmark._id,
+                _rev: existingBookmark._rev
+              };
+              
+              await bookmarksDB.put(updatedBookmark);
+              commit('updateBookmark', { id: updatedBookmark.id, updatedBookmark });
+              updated++;
+            } else {
+              unchanged++;
+            }
+          }
+        } catch (error) {
+          console.error(`Error syncing bookmark ${remoteBookmark.id}:`, error);
+        }
+      }
+      
+      console.log(`Sync complete: ${added} added, ${updated} updated, ${unchanged} unchanged`);
+      return { added, updated, unchanged };
+    } catch (error) {
+      console.error('Failed to sync with RemoteStorage:', error);
+      commit('setError', `Failed to sync with RemoteStorage: ${error.message}`);
+      throw error;
+    } finally {
+      commit('setLoading', false);
+    }
+  },
+  
   async importBookmarks({ commit, state, dispatch }, bookmarks) {
     try {
       commit('setLoading', true);

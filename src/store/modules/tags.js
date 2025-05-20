@@ -30,6 +30,88 @@ const getters = {
 };
 
 const actions = {
+  async syncWithRemote({ commit, state }, remoteTags) {
+    try {
+      commit('setLoading', true);
+      console.log('Syncing tags with RemoteStorage:', remoteTags);
+      
+      // 如果remoteTags是空的，直接返回
+      if (!remoteTags || Object.keys(remoteTags).length === 0) {
+        console.log('No remote tags to sync');
+        return { added: 0, updated: 0, unchanged: 0 };
+      }
+      
+      // 处理远程标签数据
+      const remoteTagsArray = Object.values(remoteTags);
+      console.log(`Processing ${remoteTagsArray.length} remote tags`);
+      
+      let added = 0;
+      let updated = 0;
+      let unchanged = 0;
+      
+      // 处理每个远程标签
+      for (const remoteTag of remoteTagsArray) {
+        try {
+          // 检查标签数据是否有效
+          if (!remoteTag.id) {
+            console.warn('Skipping invalid remote tag (missing id):', remoteTag);
+            continue;
+          }
+          
+          // 检查标签是否已存在
+          const existingTag = state.tags.find(t => t.id === remoteTag.id);
+          
+          if (!existingTag) {
+            // 添加新标签 - 确保所有必需字段都存在
+            const newTag = {
+              _id: remoteTag.id,
+              id: remoteTag.id,
+              name: remoteTag.name || '未命名标签',
+              color: remoteTag.color || '#3b82f6',
+              createdAt: remoteTag.createdAt || new Date().toISOString(),
+              updatedAt: remoteTag.updatedAt || new Date().toISOString()
+            };
+            
+            await tagsDB.put(newTag);
+            commit('addTag', newTag);
+            added++;
+          } else {
+            // 比较更新时间，决定是否更新
+            const remoteUpdatedAt = new Date(remoteTag.updatedAt || 0);
+            const localUpdatedAt = new Date(existingTag.updatedAt || 0);
+            
+            if (remoteUpdatedAt > localUpdatedAt) {
+              // 远程版本更新，更新本地
+              const updatedTag = {
+                ...existingTag,
+                ...remoteTag,
+                _id: existingTag._id,
+                _rev: existingTag._rev
+              };
+              
+              await tagsDB.put(updatedTag);
+              commit('updateTag', { id: updatedTag.id, updatedTag });
+              updated++;
+            } else {
+              unchanged++;
+            }
+          }
+        } catch (error) {
+          console.error(`Error syncing tag ${remoteTag.id}:`, error);
+        }
+      }
+      
+      console.log(`Sync complete: ${added} added, ${updated} updated, ${unchanged} unchanged`);
+      return { added, updated, unchanged };
+    } catch (error) {
+      console.error('Failed to sync with RemoteStorage:', error);
+      commit('setError', `Failed to sync with RemoteStorage: ${error.message}`);
+      throw error;
+    } finally {
+      commit('setLoading', false);
+    }
+  },
+
   async syncToWebDAV({ state, rootState }) {
     try {
       // 获取所有标签，移除PouchDB特定字段
