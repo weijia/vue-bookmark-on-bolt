@@ -37,38 +37,38 @@ export default {
           logging: false,
           cache: true
         });
-        
+
         // 声明访问权限
         remoteStorage.access.claim('bookmarks', 'rw');
         remoteStorage.access.claim('tags', 'rw');
-        
+
         commit('setRemoteStorage', remoteStorage);
-        
+
         // 设置事件监听
         remoteStorage.on('ready', () => {
           commit('setSyncStatus', { backend: 'remoteStorage', status: 'connected' });
           commit('setCurrentBackend', 'remoteStorage');
           dispatch('sync', 'remoteStorage');
         });
-        
+
         remoteStorage.on('connected', () => {
           commit('setSyncStatus', { backend: 'remoteStorage', status: 'connected' });
           commit('setCurrentBackend', 'remoteStorage');
           dispatch('sync', 'remoteStorage');
         });
-        
+
         remoteStorage.on('disconnected', () => {
           commit('setSyncStatus', { backend: 'remoteStorage', status: 'disconnected' });
           if (state.currentBackend === 'remoteStorage') {
             commit('setCurrentBackend', null);
           }
         });
-        
+
         remoteStorage.on('error', (error) => {
           commit('setSyncStatus', { backend: 'remoteStorage', status: 'error' });
           console.error('RemoteStorage error:', error);
         });
-        
+
         return remoteStorage;
       } catch (error) {
         console.error('Failed to initialize sync:', error);
@@ -78,15 +78,15 @@ export default {
     async sync({ state, commit, dispatch }, backend) {
       try {
         commit('setSyncStatus', { backend, status: 'syncing' });
-        
+
         const syncFunction = getSyncFunction(backend);
         const syncData = await syncFunction.sync(state);
-        
+
         if (backend === 'remoteStorage') {
           await dispatch('bookmarks/syncWithRemote', syncData.bookmarks, { root: true });
           await dispatch('tags/syncWithRemote', syncData.tags, { root: true });
         }
-        
+
         commit('setSyncStatus', { backend, status: 'connected' });
         commit('setSyncTime', { backend, time: Date.now() });
       } catch (error) {
