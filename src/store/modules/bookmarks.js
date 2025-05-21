@@ -292,7 +292,7 @@ const actions = {
             const newBookmark = {
               _id: remoteBookmark.id,
               id: remoteBookmark.id,
-              name: remoteBookmark.name || '未命名书签',
+              title: remoteBookmark.title || '未命名书签',
               url: remoteBookmark.url || '',
               tags: remoteBookmark.tags || [],
               createdAt: remoteBookmark.createdAt || new Date().toISOString(),
