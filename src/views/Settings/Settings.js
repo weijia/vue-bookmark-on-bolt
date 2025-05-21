@@ -29,7 +29,14 @@ export default {
       },
       webdavStatus: null,
       isTesting: false,
-      isSaving: false
+      isSaving: false,
+      syncBackends: {
+        [SyncBackend.REMOTE_STORAGE]: 'disconnected',
+        [SyncBackend.WEBDAV]: 'disconnected',
+        [SyncBackend.IMPORT]: 'disconnected'
+      },
+      currentBackend: null,
+      syncTimes: {}
     }
   },
   computed: {
@@ -87,19 +94,19 @@ export default {
       try {
         // 确保RemoteStorage库已加载
         const RemoteStorage = (await import('remotestoragejs')).default;
-        
+
         // 创建RemoteStorage实例
         this.remoteStorage = new RemoteStorage({
           logging: false,
           changeEvents: ['local', 'window', 'remote']
         });
-        
+
         // 初始化RemoteStorage实例
         this.remoteStorage = this.remoteStorageSync.init(this);
-        
+
         // 然后附加widget
         if (this.remoteStorageSync.attachWidget) {
-          this.remoteStorageSync.attachWidget(this);
+          this.remoteStorageSync.attachWidget(this, 'remoteStorageElementId');
         }
       } catch (error) {
         console.error('Failed to initialize RemoteStorage:', error);

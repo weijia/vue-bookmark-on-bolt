@@ -35,10 +35,11 @@ export function getSyncFunction(backend) {
 function initRemoteStorage(vm) {
   if (!vm.remoteStorage) {
     throw new Error('RemoteStorage instance not found');
+    return;
   }
 
   try {
-    // 设置事件监听器
+    // 设置事件监听器，确保回调中的this正确
     vm.remoteStorage.on('ready', () => vm.onSyncReady(SyncBackend.REMOTE_STORAGE));
     vm.remoteStorage.on('connected', () => vm.onSyncConnected(SyncBackend.REMOTE_STORAGE));
     vm.remoteStorage.on('disconnected', () => vm.onSyncDisconnected(SyncBackend.REMOTE_STORAGE));
@@ -76,7 +77,8 @@ async function attachRemoteStorageWidget(vm, elementId) {
 
 async function syncWithRemoteStorage(state) {
   if (!state.remoteStorage?.remote.connected) {
-    throw new Error('RemoteStorage not connected');
+    console.warn('RemoteStorage not connected');
+    // throw new Error('RemoteStorage not connected');
   }
 
   try {
@@ -103,7 +105,7 @@ async function ensureRemoteFolder(remoteStorage, folderName) {
   try {
     const client = remoteStorage.scope(`/${folderName}/`);
     // 使用storeFile代替storeObject，避免schema验证
-    await client.storeFile('application/json', '.info', JSON.stringify({ 
+    await client.storeFile('application/json', '.info', JSON.stringify({
       created: new Date().toISOString(),
       type: 'folder-info'
     }));

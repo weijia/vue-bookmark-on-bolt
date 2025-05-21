@@ -116,7 +116,6 @@ remoteStorage.access.claim('tags', 'rw');
 // const widget = new Widget(remoteStorage);
 // widget.attach();
 
-
 // Sync functions
 async function syncBookmarks() {
   const localBookmarks = await bookmarksDB.allDocs({ include_docs: true });
@@ -349,9 +348,7 @@ function startSync(intervalMinutes = 5) {
     live: true,
     retry: true
   });
-
 }
-
 
 // Stop sync process
 export function stopSync() {
