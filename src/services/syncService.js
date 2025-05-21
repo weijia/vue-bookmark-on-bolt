@@ -34,7 +34,7 @@ export function getSyncFunction(backend) {
 // RemoteStorage相关函数
 function initRemoteStorage(vm) {
   if (!vm.remoteStorage) {
-    throw new Error('RemoteStorage instance not found');
+    console.warn('RemoteStorage instance not found');
     return;
   }
 
@@ -63,7 +63,7 @@ async function attachRemoteStorageWidget(vm, elementId) {
   if (!vm.remoteStorage) {
     throw new Error('RemoteStorage instance not found');
   }
-  
+
   try {
     const { default: Widget } = await import('remotestorage-widget');
     const widget = new Widget(vm.remoteStorage);
@@ -85,11 +85,11 @@ async function syncWithRemoteStorage(state) {
     // 同步书签
     const bookmarksClient = state.remoteStorage.scope('/bookmarks/');
     const remoteBookmarks = await bookmarksClient.getAll();
-    
+
     // 同步标签
     const tagsClient = state.remoteStorage.scope('/tags/');
     const remoteTags = await tagsClient.getAll();
-    
+
     return {
       bookmarks: remoteBookmarks,
       tags: remoteTags
@@ -101,20 +101,20 @@ async function syncWithRemoteStorage(state) {
 }
 
 // 确保远程文件夹存在
-async function ensureRemoteFolder(remoteStorage, folderName) {
-  try {
-    const client = remoteStorage.scope(`/${folderName}/`);
-    // 使用storeFile代替storeObject，避免schema验证
-    await client.storeFile('application/json', '.info', JSON.stringify({
-      created: new Date().toISOString(),
-      type: 'folder-info'
-    }));
-    console.log(`Ensured folder exists: /${folderName}/`);
-  } catch (error) {
-    console.error(`Failed to ensure folder exists: /${folderName}/`, error);
-    throw error;
-  }
-}
+// async function ensureRemoteFolder(remoteStorage, folderName) {
+//   try {
+//     const client = remoteStorage.scope(`/${folderName}/`);
+//     // 使用storeFile代替storeObject，避免schema验证
+//     await client.storeFile('application/json', '.info', JSON.stringify({
+//       created: new Date().toISOString(),
+//       type: 'folder-info'
+//     }));
+//     console.log(`Ensured folder exists: /${folderName}/`);
+//   } catch (error) {
+//     console.error(`Failed to ensure folder exists: /${folderName}/`, error);
+//     throw error;
+//   }
+// }
 
 // WebDAV相关函数
 function initWebDAV(vm) {
