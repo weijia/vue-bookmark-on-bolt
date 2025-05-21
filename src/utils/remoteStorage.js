@@ -1,22 +1,27 @@
 // RemoteStorage工具函数
 
+let remoteStorageInstance = null;
+
 export const remoteStorage = {
   // 初始化RemoteStorage
   init() {
-    return {
-      connect: () => {
-        // 连接逻辑
-        return Promise.resolve();
-      },
-      disconnect: () => {
-        // 断开连接逻辑
-        return Promise.resolve();
-      },
-      sync: () => {
-        // 同步逻辑
-        return Promise.resolve();
-      }
-    };
+    if (!remoteStorageInstance) {
+      remoteStorageInstance = {
+        connect: () => {
+          // 连接逻辑
+          return Promise.resolve();
+        },
+        disconnect: () => {
+          // 断开连接逻辑
+          return Promise.resolve();
+        },
+        sync: () => {
+          // 同步逻辑
+          return Promise.resolve();
+        }
+      };
+    }
+    return remoteStorageInstance;
   },
 
   // 获取RemoteStorage状态

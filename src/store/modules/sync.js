@@ -30,13 +30,13 @@ export default {
     }
   },
   actions: {
-    async initializeSync({ commit, dispatch }) {
+    async initializeSync({ commit, dispatch, rootState }) {
       try {
-        // 初始化RemoteStorage
-        const remoteStorage = new RemoteStorage({
-          logging: false,
-          cache: true
-        });
+        // 使用全局RemoteStorage实例
+        const remoteStorage = rootState.sync.remoteStorage;
+        if (!remoteStorage) {
+          throw new Error('RemoteStorage instance not found');
+        }
 
         // 声明访问权限
         remoteStorage.access.claim('bookmarks', 'rw');

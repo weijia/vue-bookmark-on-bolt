@@ -89,30 +89,20 @@ export default {
     this.webdavSync = getSyncFunction(SyncBackend.WEBDAV);
     this.importSync = getSyncFunction(SyncBackend.IMPORT);
 
-    // 初始化并附加RemoteStorage widget
-    if (this.remoteStorageSync) {
+    // 使用全局RemoteStorage实例并附加widget
+    if (this.remoteStorageSync && this.$remoteStorage) {
       try {
-        // 确保RemoteStorage库已加载
-        const RemoteStorage = (await import('remotestoragejs')).default;
-
-        // 创建RemoteStorage实例
-        this.remoteStorage = new RemoteStorage({
-          logging: false,
-          changeEvents: ['local', 'window', 'remote']
-        });
-
-        // 初始化RemoteStorage实例
-        this.remoteStorage = this.remoteStorageSync.init(this);
-
-        // 然后附加widget
+        this.remoteStorage = this.$remoteStorage;
+        
+        // 附加widget
         if (this.remoteStorageSync.attachWidget) {
           this.remoteStorageSync.attachWidget(this, 'remoteStorageElementId');
         }
       } catch (error) {
-        console.error('Failed to initialize RemoteStorage:', error);
+        console.error('Failed to attach RemoteStorage widget:', error);
         this.$store.commit('notification/setNotification', {
           type: 'error',
-          message: 'Failed to initialize RemoteStorage: ' + error.message
+          message: 'Failed to attach RemoteStorage widget: ' + error.message
         });
       }
     }
