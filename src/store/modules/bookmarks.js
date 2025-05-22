@@ -118,6 +118,11 @@ const actions = {
       // 同步到WebDAV
       dispatch('syncToWebDAV');
       
+      // 通知service worker更新图标状态
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({ type: 'BOOKMARKS_UPDATED' });
+      }
+      
       return bookmark;
     } catch (error) {
       commit('setError', error.message);
@@ -151,6 +156,12 @@ const actions = {
       
       await bookmarksDB.put(updatedBookmark);
       commit('updateBookmark', { id: escapedId, updatedBookmark });
+      
+      // 通知service worker更新图标状态
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({ type: 'BOOKMARKS_UPDATED' });
+      }
+      
       return updatedBookmark;
     } catch (error) {
       commit('setError', error.message);
@@ -166,6 +177,11 @@ const actions = {
       const doc = await bookmarksDB.get(escapedId);
       await bookmarksDB.remove(doc);
       commit('deleteBookmark', escapedId);
+      
+      // 通知service worker更新图标状态
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({ type: 'BOOKMARKS_UPDATED' });
+      }
     } catch (error) {
       commit('setError', error.message);
     }
