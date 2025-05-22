@@ -1,53 +1,71 @@
 // 监听标签页更新事件
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.url || changeInfo.status === 'complete') {
-    await updateIconState(tab.url);
-  }
+  // 无论是否有URL都更新图标状态
+  await updateIconStateForTab(tab);
 });
 
 // 监听标签页激活事件
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   const tab = await chrome.tabs.get(activeInfo.tabId);
-  if (tab.url) {
-    await updateIconState(tab.url);
-  }
+  await updateIconStateForTab(tab);
 });
 
 // 更新图标状态
 async function updateIconState(currentUrl) {
   try {
-    // 获取所有书签
-    const bookmarks = await chrome.storage.local.get('bookmarks');
-    const bookmarkList = bookmarks.bookmarks || [];
-    
+    // 如果URL不存在，直接清除标记并返回
+    if (!currentUrl) {
+      await chrome.action.setBadgeText({ text: '' });
+      return;
+    }
+
+    // 从chrome.storage.local获取书签数据
+    const result = await chrome.storage.local.get('bookmarks');
+    const bookmarks = result.bookmarks || [];
+
+    // 检查URL是否有效
+    const isValidUrl = !currentUrl.startsWith('about:') &&
+                      !currentUrl.startsWith('chrome://') &&
+                      !currentUrl.startsWith('edge://');
+
     // 检查当前URL是否在书签列表中
-    const isBookmarked = bookmarkList.some(bookmark => 
-      bookmark.url && bookmark.url.toLowerCase() === currentUrl.toLowerCase()
-    );
+    const isBookmarked = isValidUrl && 
+                        bookmarks.some(bookmark => 
+                          bookmark.url && bookmark.url.toLowerCase() === currentUrl.toLowerCase()
+                        );
 
-    // 设置图标状态
-    const path = isBookmarked ? {
-      16: "icons/icon16-bookmarked.png",
-      32: "icons/icon32-bookmarked.png",
-      48: "icons/icon48-bookmarked.png",
-      128: "icons/icon128-bookmarked.png"
-    } : {
-      16: "icons/icon16.png",
-      32: "icons/icon32.png",
-      48: "icons/icon48.png",
-      128: "icons/icon128.png"
-    };
-
-    chrome.action.setIcon({ path });
+    // 设置徽章标记
+    if (isValidUrl && isBookmarked) {
+      await chrome.action.setBadgeText({ text: '✓' });
+      await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+      await chrome.action.setBadgeTextColor({ color: 'white' });
+    } else {
+      await chrome.action.setBadgeText({ text: '' });
+    }
   } catch (error) {
     console.error('Error updating icon state:', error);
+  }
+}
+
+async function updateIconStateForTab(tab){
+  if (tab){
+    updateIconState(tab?.url || '');
   }
 }
 
 // 初始化时检查当前标签页
 chrome.runtime.onInstalled.addListener(async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab && tab.url) {
-    await updateIconState(tab.url);
+  await updateIconStateForTab(tab);
+});
+
+// 监听书签更新通知
+chrome.runtime.onMessage.addListener((request) => {
+  if (request.type === 'BOOKMARKS_UPDATED') {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && tabs[0].url) {
+        updateIconStateForTab(tabs[0]);
+      }
+    });
   }
 });

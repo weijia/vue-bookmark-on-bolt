@@ -170,7 +170,8 @@ export async function saveToWebDAV(filename, localData) {
         let remoteData = [];
         try {
           const remoteContent = await webdavClient.getFileContents(fullPath, { format: 'text' });
-          remoteData = JSON.parse(remoteContent);
+          remoteData = remoteContent;
+          // remoteData = JSON.parse(remoteContent);
           if (!Array.isArray(remoteData)) {
             console.warn('Invalid remote data format, treating as empty array');
             remoteData = [];

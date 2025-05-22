@@ -118,6 +118,19 @@ const actions = {
       // 同步到WebDAV
       dispatch('syncToWebDAV');
       
+      // 同步到chrome.storage.local
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const bookmarks = state.bookmarks;
+        console.log('[addBookmark] Syncing to chrome.storage.local', bookmarks.length, 'bookmarks');
+        try {
+          await chrome.storage.local.set({ bookmarks });
+          const result = await chrome.storage.local.get('bookmarks');
+          console.log('[addBookmark] Storage verification', result.bookmarks?.length || 0, 'bookmarks stored');
+        } catch (error) {
+          console.error('[addBookmark] Storage sync error:', error);
+        }
+      }
+      
       // 通知service worker更新图标状态
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
         chrome.runtime.sendMessage({ type: 'BOOKMARKS_UPDATED' });
@@ -157,6 +170,31 @@ const actions = {
       await bookmarksDB.put(updatedBookmark);
       commit('updateBookmark', { id: escapedId, updatedBookmark });
       
+      // 同步到chrome.storage.local
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const bookmarks = state.bookmarks;
+        console.log('[updateBookmark] Syncing to chrome.storage.local', {
+          bookmarksCount: bookmarks.length,
+          firstBookmark: bookmarks[0] ? {id: bookmarks[0].id, url: bookmarks[0].url} : null,
+          storageAvailable: !!chrome.storage.local
+        });
+        
+        try {
+          await chrome.storage.local.set({ bookmarks });
+          console.log('[updateBookmark] Successfully stored bookmarks in chrome.storage.local');
+          
+          // 验证存储
+          const result = await chrome.storage.local.get('bookmarks');
+          console.log('[updateBookmark] Storage verification result:', {
+            storedCount: result.bookmarks?.length || 0,
+            firstStored: result.bookmarks?.[0] ? {id: result.bookmarks[0].id, url: result.bookmarks[0].url} : null,
+            keysInStorage: Object.keys(result)
+          });
+        } catch (error) {
+          console.error('[updateBookmark] Error syncing to chrome.storage.local:', error);
+        }
+      }
+      
       // 通知service worker更新图标状态
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
         chrome.runtime.sendMessage({ type: 'BOOKMARKS_UPDATED' });
@@ -177,6 +215,31 @@ const actions = {
       const doc = await bookmarksDB.get(escapedId);
       await bookmarksDB.remove(doc);
       commit('deleteBookmark', escapedId);
+      
+      // 同步到chrome.storage.local
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const bookmarks = state.bookmarks;
+        console.log('[deleteBookmark] Syncing to chrome.storage.local', {
+          bookmarksCount: bookmarks.length,
+          firstBookmark: bookmarks[0] ? {id: bookmarks[0].id, url: bookmarks[0].url} : null,
+          storageAvailable: !!chrome.storage.local
+        });
+        
+        try {
+          await chrome.storage.local.set({ bookmarks });
+          console.log('[deleteBookmark] Successfully stored bookmarks in chrome.storage.local');
+          
+          // 验证存储
+          const result = await chrome.storage.local.get('bookmarks');
+          console.log('[deleteBookmark] Storage verification result:', {
+            storedCount: result.bookmarks?.length || 0,
+            firstStored: result.bookmarks?.[0] ? {id: result.bookmarks[0].id, url: result.bookmarks[0].url} : null,
+            keysInStorage: Object.keys(result)
+          });
+        } catch (error) {
+          console.error('[deleteBookmark] Error syncing to chrome.storage.local:', error);
+        }
+      }
       
       // 通知service worker更新图标状态
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {

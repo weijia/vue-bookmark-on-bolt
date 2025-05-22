@@ -77,7 +77,7 @@ export default {
       { immediate: true }
     );
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // Cleanup if needed
   },
   methods: {
@@ -179,6 +179,19 @@ export default {
         // 保存合并后的数据到本地
         this.$store.commit('bookmarks/setBookmarks', mergedBookmarks);
         this.$store.commit('tags/setTags', mergedTags);
+        
+        // 同步到chrome.storage.local
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          try {
+            await chrome.storage.local.set({ bookmarks: mergedBookmarks });
+            console.log('Synced merged bookmarks to chrome.storage.local', {
+              count: mergedBookmarks.length,
+              firstItem: mergedBookmarks[0] ? mergedBookmarks[0].id : null
+            });
+          } catch (error) {
+            console.error('Failed to sync to chrome.storage.local:', error);
+          }
+        }
         
         // 保存合并后的数据到WebDAV
         await this.$store.dispatch('bookmarks/syncToWebDAV', {
