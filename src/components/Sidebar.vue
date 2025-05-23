@@ -6,43 +6,39 @@
         <span v-else>◀</span>
       </button>
     </div>
-    
+
     <nav class="sidebar-nav">
-      <router-link to="/" class="nav-item" exact-active-class="active">
+      <router-link to="/" class="nav-item">
         <span class="nav-icon">🔖</span>
         <span class="nav-label" v-if="!isCollapsed">Bookmarks</span>
       </router-link>
-      
-      <router-link to="/tags" class="nav-item" active-class="active">
+
+      <router-link to="/tags" class="nav-item">
         <span class="nav-icon">🏷️</span>
         <span class="nav-label" v-if="!isCollapsed">Tags</span>
       </router-link>
-      
-      <router-link to="/settings" class="nav-item" v-if="isMobile" active-class="active">
+
+      <router-link to="/settings" class="nav-item" active-class="active" exact-active-class="active" v-if="isMobile">
         <span class="nav-icon">⚙️</span>
         <span class="nav-label" v-if="!isCollapsed">Settings</span>
       </router-link>
-      
+
       <div class="nav-divider" v-if="!isMobile"></div>
-      
-    <div class="tag-section" v-if="!isCollapsed && !isMobile">
-      <h3 class="tag-header">Tags</h3>
-      <ul class="tag-list">
-        <li v-for="tag in sortedTags" :key="tag.id" class="tag-item">
-          <div 
-            class="tag-link"
-            :class="{ 'active': currentTagId === tag.id }"
-            @click="handleTagClick(tag.id)"
-          >
-            <span class="tag-color" :style="{ backgroundColor: tag.color }"></span>
-            <span class="tag-name">{{ tag.name }}</span>
-            <span class="tag-count">{{ tag.count }}</span>
-          </div>
-        </li>
-      </ul>
-    </div>
+
+      <div class="tag-section" v-if="!isCollapsed && !isMobile">
+        <h3 class="tag-header">Tags</h3>
+        <ul class="tag-list">
+          <li v-for="tag in sortedTags" :key="tag.id" class="tag-item">
+            <div class="tag-link" :class="{ 'active': currentTagId === tag.id }" @click="handleTagClick(tag.id)">
+              <span class="tag-color" :style="{ backgroundColor: tag.color }"></span>
+              <span class="tag-name">{{ tag.name }}</span>
+              <span class="tag-count">{{ tag.count }}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
     </nav>
-    
+
     <div class="sidebar-footer" v-if="!isCollapsed && !isMobile">
       <router-link to="/settings" class="settings-link" active-class="active">
         <span class="nav-icon">⚙️</span>
@@ -146,7 +142,7 @@ export default {
     this.checkMobile()
     window.addEventListener('resize', this.checkMobile)
   },
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener('resize', this.checkMobile)
   }
 }
@@ -215,8 +211,6 @@ export default {
   background-color: var(--hover-color);
 }
 
-.nav-item.active,
-.nav-item.router-link-active,
 .nav-item.router-link-exact-active {
   background-color: rgba(59, 130, 246, 0.1);
   color: var(--primary-color);
@@ -312,6 +306,11 @@ export default {
 .settings-link:hover {
   background-color: var(--hover-color);
   color: var(--text-primary);
+}
+
+.settings-link.active {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--primary-color);
 }
 
 @media (max-width: 768px) {

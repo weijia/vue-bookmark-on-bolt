@@ -90,6 +90,8 @@
 
 .btn-outline:hover {
   background-color: var(--hover-bg);
+  color: var(--text-color);
+  border-color: var(--primary-color);
 }
 
 .btn-primary {
@@ -97,18 +99,18 @@
   color: white;
 }
 
-.btn-primary:hover {
-  background-color: var(--primary-color-dark);
-}
+// .btn-primary:hover {
+//   background-color: var(--primary-color-dark);
+// }
 
 .btn-secondary {
   background-color: var(--secondary-color);
   color: white;
 }
 
-.btn-secondary:hover {
-  background-color: var(--secondary-color-dark);
-}
+// .btn-secondary:hover {
+//   background-color: var(--secondary-color-dark);
+// }
 
 .btn-danger {
   background-color: var(--danger-color);
@@ -154,7 +156,7 @@
 }
 
 .modal-content {
-  background-color: var(--card-bg);
+  background-color: var(--card-color);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;

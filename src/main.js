@@ -4,72 +4,16 @@ import router from './router'
 import store from './store'
 import './assets/css/styles.css'
 import { getSyncFunction } from './services/syncService'
+import {
+  isExtensionEnvironment,
+  initExtensionMessageListener
+} from './utils/extension'
 
 Vue.config.productionTip = false
 
-// 从chrome.storage.local同步书签到IndexedDB
-async function syncBookmarksFromChromeStorage() {
-  if (typeof chrome !== 'undefined' && chrome.storage) {
-    try {
-      // 等待store初始化完成
-      await store.dispatch('bookmarks/loadBookmarks');
-      
-      // 获取chrome.storage.local中的书签
-      chrome.storage.local.get(['bookmarks'], async (result) => {
-        if (result.bookmarks && Array.isArray(result.bookmarks)) {
-          console.log('Syncing bookmarks from chrome.storage.local to IndexedDB');
-          
-          // 获取当前IndexedDB中的所有书签
-          const currentBookmarks = store.getters['bookmarks/allBookmarks'];
-          
-          // 处理每个书签
-          for (const bookmark of result.bookmarks) {
-            // 检查书签是否已存在
-            const existingBookmark = currentBookmarks.find(b => b.url === bookmark.url);
-            
-            if (existingBookmark) {
-              // 更新现有书签
-              await store.dispatch('bookmarks/updateBookmark', {
-                id: existingBookmark.id,
-                updates: {
-                  title: bookmark.title,
-                  description: bookmark.description || '',
-                  tagIds: bookmark.tags || [], // 注意：chrome.storage中使用tags，而store中使用tagIds
-                  updatedAt: bookmark.updatedAt || new Date().toISOString()
-                }
-              });
-            } else {
-              // 添加新书签
-              const bookmarkData = {
-                title: bookmark.title,
-                url: bookmark.url,
-                description: bookmark.description || '',
-                tagIds: bookmark.tags ? bookmark.tags.map(tag => typeof tag === 'string' ? tag : tag.id || tag) : [],
-              };
-              await store.dispatch('bookmarks/addBookmark', bookmarkData);
-            }
-          }
-          
-          console.log('Sync completed');
-        }
-      });
-    } catch (error) {
-      console.error('Failed to sync bookmarks from chrome.storage.local:', error);
-    }
-  }
-}
-
-// 监听书签更新通知
-if (typeof chrome !== 'undefined' && chrome.runtime) {
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message && message.type === 'BOOKMARKS_UPDATED') {
-      // 当收到书签更新通知时，同步书签
-      syncBookmarksFromChromeStorage();
-    }
-  });
-  
-  // 页面加载时同步一次
-  syncBookmarksFromChromeStorage();
+// 仅在浏览器扩展环境中初始化扩展相关功能
+if (isExtensionEnvironment()) {
+  initExtensionMessageListener(store);
 }
 
 // 初始化全局RemoteStorage实例
@@ -89,7 +33,8 @@ const initRemoteStorage = async () => {
     // 将实例添加到store的state
     store.commit('sync/setRemoteStorage', Vue.prototype.$remoteStorage);
   } catch (error) {
-    console.error('Failed to initialize RemoteStorage:', error);
+    console.warn('Failed to initialize RemoteStorage:', error);
+    // 不抛出异常，而是继续初始化应用
   }
 };
 
@@ -98,11 +43,15 @@ const vm = new Vue({
   store,
   render: h => h(App),
   async beforeCreate() {
-    await initRemoteStorage();
-    // 确保RemoteStorage实例可用后再初始化同步
+    try {
+      await initRemoteStorage();
+    } catch (error) {
+      console.warn('RemoteStorage initialization failed:', error);
+    }
+    // 即使RemoteStorage初始化失败，也继续初始化同步
     await store.dispatch('sync/initializeSync')
       .catch(error => {
-        console.error('Failed to initialize sync:', error)
+        console.warn('Failed to initialize sync:', error);
       });
   }
 }).$mount('#app')

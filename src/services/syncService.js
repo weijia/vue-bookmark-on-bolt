@@ -5,6 +5,15 @@ export const SyncBackend = {
   IMPORT: 'import'
 };
 
+// 同步状态枚举
+export const SyncStatus = {
+  DISCONNECTED: 'disconnected',
+  CONNECTING: 'connecting',
+  CONNECTED: 'connected',
+  SYNCING: 'syncing',
+  ERROR: 'error'
+};
+
 // 获取同步函数
 export function getSyncFunction(backend) {
   switch (backend) {
@@ -35,7 +44,7 @@ export function getSyncFunction(backend) {
 function initRemoteStorage(vm) {
   if (!vm.remoteStorage) {
     console.warn('RemoteStorage instance not found');
-    return;
+    return null;
   }
 
   try {
@@ -47,21 +56,27 @@ function initRemoteStorage(vm) {
 
     return vm.remoteStorage;
   } catch (error) {
-    console.error('Failed to initialize RemoteStorage:', error);
-    throw error;
+    console.warn('Failed to initialize RemoteStorage:', error);
+    return null;
   }
 }
 
 function connectRemoteStorage(vm) {
   if (!vm.remoteStorage) {
-    throw new Error('RemoteStorage instance not found');
+    console.warn('RemoteStorage instance not found');
+    return;
   }
-  vm.remoteStorage.connect();
+  try {
+    vm.remoteStorage.connect();
+  } catch (error) {
+    console.warn('Failed to connect RemoteStorage:', error);
+  }
 }
 
 async function attachRemoteStorageWidget(vm, elementId) {
   if (!vm.remoteStorage) {
-    throw new Error('RemoteStorage instance not found');
+    console.warn('RemoteStorage instance not found');
+    return null;
   }
 
   try {
@@ -70,15 +85,38 @@ async function attachRemoteStorageWidget(vm, elementId) {
     widget.attach(elementId);
     return widget;
   } catch (error) {
-    console.error('Failed to attach RemoteStorage widget:', error);
-    throw new Error(`Failed to attach RemoteStorage widget: ${error.message}`);
+    console.warn('Failed to attach RemoteStorage widget:', error);
+    return null;
   }
 }
 
+// 添加防抖装饰器
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    return new Promise((resolve, reject) => {
+      timeout = setTimeout(async () => {
+        try {
+          const result = await func.apply(this, args);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      }, wait);
+    });
+  };
+}
+
 async function syncWithRemoteStorage(state) {
-  if (!state.remoteStorage?.remote.connected) {
+  // 检查连接状态
+  if (!state.remoteStorage?.remote?.connected) {
     console.warn('RemoteStorage not connected');
-    // throw new Error('RemoteStorage not connected');
+    return {
+      bookmarks: {},
+      tags: {},
+      timestamp: new Date().toISOString()
+    };
   }
 
   try {
@@ -92,29 +130,21 @@ async function syncWithRemoteStorage(state) {
 
     return {
       bookmarks: remoteBookmarks,
-      tags: remoteTags
+      tags: remoteTags,
+      timestamp: new Date().toISOString()
     };
   } catch (error) {
-    console.error('RemoteStorage sync error:', error);
-    throw new Error(`RemoteStorage sync failed: ${error.message}`);
+    console.warn('RemoteStorage sync error:', error);
+    return {
+      bookmarks: {},
+      tags: {},
+      timestamp: new Date().toISOString()
+    };
   }
 }
 
-// 确保远程文件夹存在
-// async function ensureRemoteFolder(remoteStorage, folderName) {
-//   try {
-//     const client = remoteStorage.scope(`/${folderName}/`);
-//     // 使用storeFile代替storeObject，避免schema验证
-//     await client.storeFile('application/json', '.info', JSON.stringify({
-//       created: new Date().toISOString(),
-//       type: 'folder-info'
-//     }));
-//     console.log(`Ensured folder exists: /${folderName}/`);
-//   } catch (error) {
-//     console.error(`Failed to ensure folder exists: /${folderName}/`, error);
-//     throw error;
-//   }
-// }
+// 使用防抖包装同步函数
+export const debouncedSyncWithRemoteStorage = debounce(syncWithRemoteStorage, 1000);
 
 // WebDAV相关函数
 function initWebDAV(vm) {
@@ -214,3 +244,33 @@ async function exportToFile(vm) {
     throw error;
   }
 }
+
+// 导出同步服务
+export const syncService = {
+  getStatus: async () => {
+    // 获取同步状态的实现
+    return {
+      lastSync: localStorage.getItem('lastSync') || null,
+      nextSync: null, // 可以根据需要计算下次同步时间
+      status: localStorage.getItem('syncStatus') || SyncStatus.DISCONNECTED
+    };
+  },
+  syncNow: async () => {
+    try {
+      localStorage.setItem('syncStatus', SyncStatus.SYNCING);
+      // 执行实际的同步操作
+      await debouncedSyncWithRemoteStorage();
+      localStorage.setItem('lastSync', new Date().toISOString());
+      localStorage.setItem('syncStatus', SyncStatus.CONNECTED);
+    } catch (error) {
+      console.warn('Sync failed:', error);
+      localStorage.setItem('syncStatus', SyncStatus.ERROR);
+      // 不抛出异常，而是返回空结果
+      return {
+        bookmarks: {},
+        tags: {},
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+};
