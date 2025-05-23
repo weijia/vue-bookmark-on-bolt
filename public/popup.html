@@ -29,12 +29,142 @@
     .button:hover {
       background-color: #45a049;
     }
+    .form-container {
+      display: none;
+      margin-top: 16px;
+    }
+    .form-group {
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .tag-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 8px;
+    }
+    .tag {
+      background-color: #e0e0e0;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+    }
+    .tag span {
+      margin-right: 5px;
+    }
+    .tag button {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      padding: 0;
+      width: auto;
+      margin: 0;
+      font-size: 14px;
+    }
+    .tag-search-results {
+      position: absolute;
+      width: calc(100% - 2px);
+      max-height: 150px;
+      overflow-y: auto;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-top: 2px;
+      z-index: 10;
+      display: none;
+    }
+    .tag-result {
+      padding: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .tag-result:hover {
+      background-color: #f5f5f5;
+    }
+    .button-group {
+      display: flex;
+      gap: 8px;
+    }
+    .button-group .button {
+      margin: 0;
+    }
+    .cancel-button {
+      background-color: #f44336;
+    }
+    .cancel-button:hover {
+      background-color: #d32f2f;
+    }
+    .status {
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .success {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+    .error {
+      background-color: #ffebee;
+      color: #c62828;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Vue Bookmark on Bolt</h2>
-    <a href="index.html" target="_blank" class="button">打开书签管理器</a>
+    
+    <div id="mainButtons">
+      <button id="addCurrentPage" class="button">添加当前页面到书签</button>
+      <a href="index.html" target="_blank" class="button">打开书签管理器</a>
+    </div>
+    
+    <div id="bookmarkForm" class="form-container">
+      <div class="form-group">
+        <label for="title">标题</label>
+        <input type="text" id="title" placeholder="输入书签标题">
+      </div>
+      
+      <div class="form-group">
+        <label for="url">URL</label>
+        <input type="text" id="url" placeholder="输入书签URL">
+      </div>
+      
+      <div class="form-group">
+        <label for="description">描述 (可选)</label>
+        <textarea id="description" rows="2" placeholder="输入书签描述"></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label for="tagInput">标签 (可选，按回车添加)</label>
+        <input type="text" id="tagInput" placeholder="输入标签名称并按回车">
+        <div class="tag-container" id="tagContainer"></div>
+      </div>
+      
+      <div class="button-group">
+        <button id="saveBookmark" class="button">保存书签</button>
+        <button id="cancelBookmark" class="button cancel-button">取消</button>
+      </div>
+      
+      <div id="status" class="status" style="display: none;"></div>
+    </div>
   </div>
+  
+  <script src="popup.js"></script>
 </body>
 </html>

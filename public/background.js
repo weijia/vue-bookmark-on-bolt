@@ -59,13 +59,62 @@ chrome.runtime.onInstalled.addListener(async () => {
   await updateIconStateForTab(tab);
 });
 
-// 监听书签更新通知
-chrome.runtime.onMessage.addListener((request) => {
+// 监听书签更新通知和添加书签请求
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'BOOKMARKS_UPDATED') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0] && tabs[0].url) {
         updateIconStateForTab(tabs[0]);
       }
     });
+  } else if (request.type === 'GET_CURRENT_TAB') {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        sendResponse({
+          url: tabs[0].url,
+          title: tabs[0].title
+        });
+      }
+    });
+    return true; // 保持消息通道开放以进行异步响应
+  } else if (request.type === 'ADD_BOOKMARK') {
+    const { bookmark } = request;
+    
+    // 首先保存到chrome.storage.local
+    chrome.storage.local.get(['bookmarks'], (result) => {
+      const bookmarks = result.bookmarks || [];
+      
+      // 检查是否已存在相同ID的书签（更新）或相同URL的书签（新增）
+      const existingIndex = bookmark.id ? 
+        bookmarks.findIndex(b => b.id === bookmark.id) :
+        bookmarks.findIndex(b => b.url === bookmark.url);
+      
+      if (existingIndex >= 0) {
+        // 更新现有书签，保留原有的createdAt
+        const originalCreatedAt = bookmarks[existingIndex].createdAt;
+        bookmarks[existingIndex] = { 
+          ...bookmark,
+          createdAt: originalCreatedAt || bookmark.createdAt // 确保保留原始创建时间
+        };
+      } else {
+        // 添加新书签
+        bookmarks.push(bookmark);
+      }
+      
+      chrome.storage.local.set({ bookmarks }, () => {
+        // 更新图标状态
+        updateIconStateForTab({ url: bookmark.url });
+        
+        // 发送书签更新通知
+        chrome.runtime.sendMessage({ 
+          type: 'BOOKMARKS_UPDATED',
+          bookmarks: bookmarks
+        });
+        
+        // 响应popup的请求
+        sendResponse({ success: true });
+      });
+    });
+    return true; // 保持消息通道开放以进行异步响应
   }
 });

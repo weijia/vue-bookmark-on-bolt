@@ -18,6 +18,10 @@ const getters = {
     const escapedId = escapeId(id);
     return state.bookmarks.find(bookmark => bookmark.id === escapedId);
   },
+
+  bookmarkByUrl: state => url => {
+    return state.bookmarks.find(bookmark => bookmark.url === url);
+  },
   
   bookmarksByTag: state => tagId => {
     const escapedTagId = escapeId(tagId);

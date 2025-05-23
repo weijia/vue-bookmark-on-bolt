@@ -12,7 +12,9 @@
   "options_page": "index.html",
   "permissions": [
     "storage",
-    "webRequest"
+    "webRequest",
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
     "https://miya.teracloud.jp/*",
