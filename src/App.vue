@@ -14,7 +14,7 @@
 
 <script>
 import Sidebar from './components/Sidebar.vue';
-import { syncDataToWebDAV, setupWebDAVSync } from './services/storage';
+import StorageService from './services/StorageService';
 
 export default {
   name: 'App',
@@ -26,7 +26,8 @@ export default {
       isDarkMode: false,
       searchQuery: '',
       syncStatus: 'idle', // 'idle'|'preparing'|'syncing'|'success'|'error'
-      lastSyncTime: null
+      lastSyncTime: null,
+      storageService: new StorageService()
     };
   },
   computed: {
@@ -158,7 +159,7 @@ export default {
         }
         
         console.log('Setting up WebDAV sync...');
-        await setupWebDAVSync(webdavConfig);
+        await this.storageService.setup(webdavConfig);
 
         this.syncStatus = 'syncing';
         console.log('Syncing data to WebDAV...');
@@ -168,7 +169,7 @@ export default {
         const localTags = this.$store.state.tags.tags;
         
         // 从WebDAV加载远程数据
-        const remoteData = await this.$store.dispatch('bookmarks/loadFromWebDAV');
+        const remoteData = await this.storageService.load();
         const remoteBookmarks = remoteData?.bookmarks || [];
         const remoteTags = remoteData?.tags || [];
         
@@ -194,7 +195,7 @@ export default {
         }
         
         // 保存合并后的数据到WebDAV
-        await this.$store.dispatch('bookmarks/syncToWebDAV', {
+        await this.storageService.save({
           bookmarks: mergedBookmarks,
           tags: mergedTags
         });

@@ -231,18 +231,14 @@ async function importFromFile(vm, file) {
 }
 
 async function exportToFile(vm) {
-  try {
-    const data = {
-      bookmarks: vm.$store.getters['bookmarks/all'],
-      tags: vm.$store.getters['tags/all']
-    };
+  const data = {
+    bookmarks: vm.$store.getters['bookmarks/all'],
+    tags: vm.$store.getters['tags/all']
+  };
 
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    return URL.createObjectURL(blob);
-  } catch (error) {
-    throw error;
-  }
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  return URL.createObjectURL(blob);
 }
 
 // 导出同步服务

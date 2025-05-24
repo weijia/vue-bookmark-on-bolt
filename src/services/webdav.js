@@ -24,9 +24,9 @@ export function renameKeysInArray(data, mapping) {
     const renamedObj = {};
 
     for (let key in obj) {
-      if (obj.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
         // 如果存在映射，使用新键名；否则保留原键名
-        const newKey = mapping.hasOwnProperty(key) ? mapping[key] : key;
+        const newKey = Object.prototype.hasOwnProperty.call(mapping, key) ? mapping[key] : key;
         renamedObj[newKey] = obj[key];
       }
     }
@@ -353,6 +353,10 @@ export async function loadFromWebDAV(filename) {
     
     throw error;
   }
+}
+
+export async function syncWithWebDAV(bookmarks, tags) {
+  return syncToWebDAV(bookmarks, tags);
 }
 
 export async function syncToWebDAV(bookmarks, tags) {

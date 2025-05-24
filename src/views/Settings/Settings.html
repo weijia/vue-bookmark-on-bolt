@@ -303,18 +303,51 @@
               />
               <small class="help-text">Directory path where files will be saved (e.g., /bookmarks)</small>
             </div>
+
+            <div class="form-group">
+              <label for="webdavSyncInterval">Auto Sync Interval</label>
+              <select 
+                id="webdavSyncInterval"
+                v-model="webdavConfig.syncInterval" 
+                class="form-control"
+              >
+                <option value="0">Manual Only</option>
+                <option value="5">Every 5 minutes</option>
+                <option value="15">Every 15 minutes</option>
+                <option value="30">Every 30 minutes</option>
+                <option value="60">Every hour</option>
+                <option value="1440">Once a day</option>
+              </select>
+              <small class="help-text">How often to automatically sync with WebDAV server</small>
+            </div>
           </div>
 
-          <div class="modal-actions">
-            <button type="button" class="btn btn-outline" @click="showWebDAVModal = false">
-              Cancel
-            </button>
-            <button type="button" class="btn btn-secondary" @click="testWebDAVConnection" :disabled="isTesting">
-              {{ isTesting ? 'Testing...' : 'Test Connection' }}
-            </button>
-            <button type="submit" class="btn btn-primary" :disabled="isSaving">
-              {{ isSaving ? 'Saving...' : 'Save Configuration' }}
-            </button>
+          <div class="webdav-actions">
+            <div class="sync-status-container" v-if="webdavConfig.enabled">
+              <div class="last-sync" v-if="lastWebDAVSync">
+                Last synced: {{ formatLastWebDAVSync }}
+              </div>
+              <button 
+                type="button" 
+                class="btn btn-secondary" 
+                @click="manualSync" 
+                :disabled="isSyncing"
+              >
+                {{ isSyncing ? 'Syncing...' : 'Sync Now' }}
+              </button>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="btn btn-outline" @click="showWebDAVModal = false">
+                Cancel
+              </button>
+              <button type="button" class="btn btn-secondary" @click="testWebDAVConnection" :disabled="isTesting">
+                {{ isTesting ? 'Testing...' : 'Test Connection' }}
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="isSaving">
+                {{ isSaving ? 'Saving...' : 'Save Configuration' }}
+              </button>
+            </div>
           </div>
 
           <div v-if="webdavStatus" :class="['status-message', webdavStatus.type]">

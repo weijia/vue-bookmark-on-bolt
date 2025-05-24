@@ -26,18 +26,16 @@ export default {
         password: '',
         enableSync: false,
         syncInterval: 15
-      },
-      webdavConfig: {
-        enabled: false,
-        url: '',
-        username: '',
-        password: '',
-        path: '/bookmarks'
       }
     }
   },
   computed: {
-    ...mapState(['settings']),
+    ...mapState({
+      settings: state => state.settings,
+      webdavConfig: state => state.sync.webdavConfig,
+      isSyncing: state => state.sync.isSyncing,
+      lastWebDAVSync: state => state.sync.syncTimes.webdav
+    }),
     // 添加缺失的计算属性
     syncStatusText() {
       switch (this.syncStatus.status) {
@@ -52,12 +50,19 @@ export default {
         default:
           return 'Unknown';
       }
+    },
+    formatLastWebDAVSync() {
+      if (!this.lastWebDAVSync) return '';
+      const date = new Date(this.lastWebDAVSync);
+      return date.toLocaleString();
     }
   },
   created() {
     this.initSync()
     // 初始化暗黑模式
     this.isDarkMode = localStorage.getItem('darkMode') === 'true'
+    // 初始化WebDAV自动同步
+    this.setupWebDAVAutoSync()
   },
   mounted() {
     this.monitorSyncStatus()
@@ -68,7 +73,11 @@ export default {
     }
   },
   methods: {
-    ...mapActions(['updateSettings']),
+    ...mapActions([
+      'updateSettings',
+      'manualWebDAVSync',
+      'setupWebDAVAutoSync'
+    ]),
     async initSync() {
       try {
         await this.updateSyncStatus()
@@ -124,11 +133,30 @@ export default {
         console.error('Failed to save PouchDB config:', error)
       }
     },
-    saveWebDAVConfig() {
+    async saveWebDAVConfig() {
       try {
         this.isSaving = true
-        // 保存WebDAV配置的逻辑
-        console.log('Saving WebDAV config:', this.webdavConfig)
+        
+        // 保存WebDAV配置到localStorage
+        localStorage.setItem('webdavConfig', JSON.stringify(this.webdavConfig))
+        console.log('WebDAV config saved successfully:', this.webdavConfig)
+        
+        // 如果启用了WebDAV，初始化WebDAV客户端
+        if (this.webdavConfig.enabled) {
+          try {
+            const { initializeWebDAV } = await import('../../services/webdav')
+            await initializeWebDAV(this.webdavConfig)
+            console.log('WebDAV client initialized successfully')
+          } catch (initError) {
+            console.error('Failed to initialize WebDAV client:', initError)
+            // 显示初始化错误，但不阻止保存配置
+            this.webdavStatus = {
+              type: 'warning',
+              message: `Configuration saved, but failed to initialize client: ${initError.message}`
+            }
+          }
+        }
+        
         setTimeout(() => {
           this.isSaving = false
           this.showWebDAVModal = false
@@ -136,27 +164,63 @@ export default {
       } catch (error) {
         this.isSaving = false
         console.error('Failed to save WebDAV config:', error)
-      }
-    },
-    testWebDAVConnection() {
-      try {
-        this.isTesting = true
-        // 测试WebDAV连接的逻辑
-        console.log('Testing WebDAV connection:', this.webdavConfig)
-        setTimeout(() => {
-          this.isTesting = false
-          this.webdavStatus = {
-            type: 'success',
-            message: 'Connection successful!'
-          }
-        }, 1000)
-      } catch (error) {
-        this.isTesting = false
         this.webdavStatus = {
           type: 'error',
-          message: `Connection failed: ${error.message}`
+          message: `Failed to save configuration: ${error.message}`
         }
-        console.error('Failed to test WebDAV connection:', error)
+      }
+    },
+    async manualSync() {
+      try {
+        await this.manualWebDAVSync();
+        this.webdavStatus = {
+          type: 'success',
+          message: 'Sync completed successfully'
+        };
+      } catch (error) {
+        console.error('WebDAV sync failed:', error);
+        this.webdavStatus = {
+          type: 'error',
+          message: `Sync failed: ${error.message || 'Unknown error'}`
+        };
+      }
+    },
+
+    async testWebDAVConnection() {
+      if (!this.webdavConfig.url || !this.webdavConfig.username || !this.webdavConfig.password) {
+        this.webdavStatus = {
+          type: 'error',
+          message: 'Please fill in all required fields (URL, username, and password)'
+        }
+        return
+      }
+
+      this.isTesting = true
+      this.webdavStatus = null
+
+      try {
+        const { initializeWebDAV } = await import('../../services/webdav')
+        
+        // 使用当前配置测试连接
+        await initializeWebDAV({
+          url: this.webdavConfig.url,
+          username: this.webdavConfig.username,
+          password: this.webdavConfig.password,
+          path: this.webdavConfig.path || '/tidemark'
+        })
+
+        this.webdavStatus = {
+          type: 'success',
+          message: 'Connection successful! WebDAV server is accessible.'
+        }
+      } catch (error) {
+        console.error('WebDAV connection test failed:', error)
+        this.webdavStatus = {
+          type: 'error',
+          message: `Connection failed: ${error.message || 'Unable to connect to WebDAV server'}`
+        }
+      } finally {
+        this.isTesting = false
       }
     },
     exportBookmarks() {

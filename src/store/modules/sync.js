@@ -1,5 +1,4 @@
-import { SyncBackend, getSyncFunction, debouncedSyncWithRemoteStorage } from '../../services/syncService';
-import RemoteStorage from 'remotestoragejs';
+import { syncWithWebDAV } from '../../services/webdav';
 
 // 防抖装饰器
 function debounce(func, wait) {
@@ -31,6 +30,13 @@ export default {
       remoteStorage: null,
       webdav: null
     },
+    webdavConfig: {
+      enabled: false,
+      url: '',
+      username: '',
+      password: '',
+      syncInterval: 30 // minutes
+    },
     currentBackend: null,
     isSyncing: false, // 新增：用于跟踪同步状态
     lastSyncAttempt: null // 新增：用于跟踪上次同步尝试时间
@@ -53,6 +59,12 @@ export default {
     },
     setLastSyncAttempt(state, time) {
       state.lastSyncAttempt = time;
+    },
+    updateWebDAVConfig(state, config) {
+      state.webdavConfig = {
+        ...state.webdavConfig,
+        ...config
+      };
     }
   },
   actions: {
@@ -180,6 +192,44 @@ export default {
       return dispatch('debouncedSync', backend).catch(err => {
         console.warn('Sync operation failed:', err);
       });
+    },
+
+    async manualWebDAVSync({ commit, state, dispatch }) {
+      if (state.isSyncing){
+        console.log('Sync already in progress, skipping...');
+        return;
+      }
+      try {
+        commit('setIsSyncing', true);
+        await syncWithWebDAV();
+        
+        commit('setSyncStatus', { backend: 'webdav', status: 'connected' });
+        commit('setSyncTime', { backend: 'webdav', time: new Date() });
+      } catch (error) {
+        console.error('WebDAV sync failed:', error);
+        commit('setSyncStatus', { 
+          backend: 'webdav', 
+          status: 'error',
+          message: error.message || 'Unknown error'
+        });
+      } finally {
+        commit('setIsSyncing', false);
+      }
+    },
+
+    setupWebDAVAutoSync({ commit, state, dispatch }) {
+      if (state.syncTimer) {
+        clearInterval(state.syncTimer);
+      }
+      
+      if (state.webdavConfig.enabled && state.webdavConfig.syncInterval > 0) {
+        const intervalMs = state.webdavConfig.syncInterval * 60 * 1000;
+        state.syncTimer = setInterval(() => {
+          if (!state.isSyncing) {
+            dispatch('manualWebDAVSync');
+          }
+        }, intervalMs);
+      }
     }
   },
   getters: {
