@@ -64,7 +64,7 @@ export default {
     this.$store.dispatch('tags/loadTags');
     
     // Start sync
-    this.syncWithWebDAV();
+    this.$store.dispatch('sync/startSync');
 
     // 监听路由变化
     this.$watch(
@@ -145,102 +145,6 @@ export default {
       
       // 其他情况显示完整日期
       return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    },
-    
-    async syncWithWebDAV() {
-      try {
-        this.syncStatus = 'preparing';
-        
-        const webdavConfig = JSON.parse(localStorage.getItem('webdavConfig'));
-        if (!webdavConfig) {
-          console.log('WebDAV configuration not found');
-          this.syncStatus = 'error';
-          return;
-        }
-        
-        console.log('Setting up WebDAV sync...');
-        await this.storageService.setup(webdavConfig);
-
-        this.syncStatus = 'syncing';
-        console.log('Syncing data to WebDAV...');
-        
-        // 获取本地数据
-        const localBookmarks = this.$store.state.bookmarks.bookmarks;
-        const localTags = this.$store.state.tags.tags;
-        
-        // 从WebDAV加载远程数据
-        const remoteData = await this.storageService.load();
-        const remoteBookmarks = remoteData?.bookmarks || [];
-        const remoteTags = remoteData?.tags || [];
-        
-        // 合并数据
-        const mergedBookmarks = this.mergeData(localBookmarks, remoteBookmarks);
-        const mergedTags = this.mergeData(localTags, remoteTags);
-        
-        // 保存合并后的数据到本地
-        this.$store.commit('bookmarks/setBookmarks', mergedBookmarks);
-        this.$store.commit('tags/setTags', mergedTags);
-        
-        // 同步到chrome.storage.local
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          try {
-            await chrome.storage.local.set({ bookmarks: mergedBookmarks });
-            console.log('Synced merged bookmarks to chrome.storage.local', {
-              count: mergedBookmarks.length,
-              firstItem: mergedBookmarks[0] ? mergedBookmarks[0].id : null
-            });
-          } catch (error) {
-            console.error('Failed to sync to chrome.storage.local:', error);
-          }
-        }
-        
-        // 保存合并后的数据到WebDAV
-        await this.storageService.save({
-          bookmarks: mergedBookmarks,
-          tags: mergedTags
-        });
-        
-        this.syncStatus = 'success';
-        this.lastSyncTime = new Date();
-        console.log('WebDAV sync completed successfully');
-      } catch (error) {
-        console.error('WebDAV同步错误:', error);
-        this.syncStatus = 'error';
-        // 显示错误消息
-        alert(`WebDAV同步失败: ${error.message}`);
-      }
-    },
-    
-    mergeData(localData, remoteData) {
-      if (!Array.isArray(localData) || !Array.isArray(remoteData)) {
-        throw new Error('Invalid data format: expected arrays');
-      }
-      
-      // 使用Map来合并数据，以id为键
-      const mergedMap = new Map();
-      
-      // 先添加远程数据
-      remoteData.forEach(item => {
-        if (item && item.id) {
-          mergedMap.set(item.id, { ...item });
-        }
-      });
-      
-      // 然后添加或更新本地数据
-      localData.forEach(item => {
-        if (item && item.id) {
-          const existingItem = mergedMap.get(item.id);
-          // 如果本地数据有更新日期且比远程数据新，则使用本地数据
-          if (!existingItem || 
-              (item.updatedAt && existingItem.updatedAt && 
-               new Date(item.updatedAt) > new Date(existingItem.updatedAt))) {
-            mergedMap.set(item.id, { ...item });
-          }
-        }
-      });
-      
-      // 转换回数组
-      return Array.from(mergedMap.values());
     }
   }
 };

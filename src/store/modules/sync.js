@@ -1,22 +1,5 @@
-import { syncWithWebDAV } from '../../services/webdav';
-
-// 防抖装饰器
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    return new Promise((resolve, reject) => {
-      timeout = setTimeout(async () => {
-        try {
-          const result = await func.apply(this, args);
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        }
-      }, wait);
-    });
-  };
-}
+import { SyncService } from '../../services/syncService';
+const syncService = new SyncService();
 
 export default {
   namespaced: true,
@@ -126,7 +109,7 @@ export default {
     },
 
     // 使用防抖的同步操作
-    debouncedSync: debounce(async function({ state, commit, dispatch }, backend) {
+    debouncedSync: syncService.debounce(async function({ state, commit, dispatch }, backend) {
       // 检查是否已经在同步中
       if (state.isSyncing) {
         console.log('Sync already in progress, skipping...');
@@ -194,14 +177,14 @@ export default {
       });
     },
 
-    async manualWebDAVSync({ commit, state, dispatch }) {
+    async manualWebDAVSync({ commit, state, dispatch, rootState }) {
       if (state.isSyncing){
         console.log('Sync already in progress, skipping...');
         return;
       }
       try {
         commit('setIsSyncing', true);
-        await syncWithWebDAV();
+        await syncService.syncWithWebDAV(rootState);
         
         commit('setSyncStatus', { backend: 'webdav', status: 'connected' });
         commit('setSyncTime', { backend: 'webdav', time: new Date() });
