@@ -17,6 +17,7 @@
  * WebDAVManager保持原始数据通信。
  */
 import { escapeId, unescapeId } from '../utils/idEscape';
+import PouchDB from 'pouchdb-browser';
 
 // 字段名映射配置
 const FIELD_MAPPING = {
@@ -29,13 +30,30 @@ const FIELD_MAPPING = {
 };
 
 export default class PouchDBWebDAVSync {
-  constructor(pouchDB, webDAVManager) {
-    this.pouchDB = pouchDB;
+  constructor(webDAVManager) {
     this.webDAVManager = webDAVManager;
     this.isSyncing = false;
     this.lastSyncTime = null;
     this.syncListeners = [];
+    // Initialize PouchDB
+    this.bookmarksDB = new PouchDB('bookmarks');
+    this.tagsDB = new PouchDB('tags');
   }
+
+  #escapeDocId(doc) {
+    if (doc._id) {
+      doc._id = escapeId(doc._id);
+    }
+    return doc;
+  }
+
+  #unescapeDocId(doc) {
+    if (doc._id) {
+      doc._id = unescapeId(doc._id);
+    }
+    return doc;
+  }
+
 
   // 将PouchDB文档转换为WebDAV格式
   #convertToWebDAVFormat(pouchDoc) {
@@ -48,11 +66,7 @@ export default class PouchDBWebDAVSync {
         webDAVDoc[key] = pouchDoc[key];
       }
     }
-    // 处理ID转义
-    if (webDAVDoc.id) {
-      webDAVDoc.id = unescapeId(webDAVDoc.id);
-    }
-    return webDAVDoc;
+    return this.#unescapeDocId(webDAVDoc);
   }
 
   // 将WebDAV文档转换为PouchDB格式
@@ -66,11 +80,7 @@ export default class PouchDBWebDAVSync {
         pouchDoc[key] = webDAVDoc[key];
       }
     }
-    // 处理ID转义
-    if (pouchDoc._id) {
-      pouchDoc._id = escapeId(pouchDoc._id);
-    }
-    return pouchDoc;
+    return this.#escapeDocId(pouchDoc);
   }
 
   // 添加同步状态监听器
@@ -89,9 +99,9 @@ export default class PouchDBWebDAVSync {
   }
 
   // 从PouchDB获取所有数据
-  async #getAllFromPouchDB() {
+  async #getAllFromPouchDB(pouchDB) {
     try {
-      const result = await this.pouchDB.allDocs({
+      const result = await pouchDB.allDocs({
         include_docs: true,
         attachments: true
       });
@@ -103,9 +113,9 @@ export default class PouchDBWebDAVSync {
   }
 
   // 保存数据到PouchDB
-  async #saveToPouchDB(docs) {
+  async #saveToPouchDB(pouchDB, docs) {
     try {
-      const result = await this.pouchDB.bulkDocs(docs);
+      const result = await pouchDB.bulkDocs(docs);
       return result;
     } catch (error) {
       console.error('Error saving data to PouchDB:', error);
@@ -114,7 +124,7 @@ export default class PouchDBWebDAVSync {
   }
 
   // 同步数据到WebDAV
-  async syncToWebDAV(filename = 'data.json') {
+  async syncToWebDAV(pouchDB, filename = 'data.json', transformFunc = null) {
     if (this.isSyncing) {
       console.warn('Sync already in progress');
       return false;
@@ -125,10 +135,10 @@ export default class PouchDBWebDAVSync {
 
     try {
       // 1. 从PouchDB获取数据(已转义的ID)
-      const pouchData = await this.#getAllFromPouchDB();
+      const pouchData = await this.#getAllFromPouchDB(pouchDB);
       
       // 2. 转换数据格式为WebDAV格式
-      const webDAVData = pouchData.map(doc => this.#convertToWebDAVFormat(doc));
+      const webDAVData = pouchData.map(doc => transformFunc(doc));
 
       // 3. 保存到WebDAV
       await this.webDAVManager.save(filename, webDAVData);
@@ -157,7 +167,7 @@ export default class PouchDBWebDAVSync {
   }
 
   // 从WebDAV同步数据
-  async syncFromWebDAV(filename = 'data.json') {
+  async syncFromWebDAV(filename = 'data.json', pouchDB, transformFunc = null) {
     if (this.isSyncing) {
       console.warn('Sync already in progress');
       return false;
@@ -171,10 +181,10 @@ export default class PouchDBWebDAVSync {
       const webDAVData = await this.webDAVManager.load(filename);
 
       // 2. 转换数据格式为PouchDB格式
-      const pouchData = webDAVData.map(doc => this.#convertToPouchDBFormat(doc));
+      const pouchData = webDAVData.map(doc => transformFunc(doc));
 
       // 3. 获取当前PouchDB数据用于冲突检测
-      const currentData = await this.#getAllFromPouchDB();
+      const currentData = await this.#getAllFromPouchDB(pouchDB);
       const currentMap = new Map(currentData.map(doc => [doc._id, doc]));
 
       // 4. 合并数据
@@ -220,17 +230,19 @@ export default class PouchDBWebDAVSync {
     }
   }
 
-  // 双向同步
-  // async fullSync(filename = 'data.json') {
-  //   try {
-  //     await this.syncFromWebDAV(filename);
-  //     await this.syncToWebDAV(filename);
-  //     return true;
-  //   } catch (error) {
-  //     console.error('Error during full sync:', error);
-  //     throw error;
-  //   }
-  // }
+  双向同步
+  async fullSync() {
+    try {
+      await this.syncFromWebDAV('tag.json', this.tagsDB, this.#escapeDocId);
+      await this.syncToWebDAV(this.tagsDB, 'tag.json', this.#unescapeDocId);
+      await this.syncFromWebDAV('collection.json', this.bookmarksDB, this.#convertToPouchDBFormat);
+      await this.syncToWebDAV(this.bookmarksDB, 'collection.json', this.#convertToWebDAVFormat);
+      return true;
+    } catch (error) {
+      console.error('Error during full sync:', error);
+      throw error;
+    }
+  }
 
   // 获取同步状态
   getStatus() {

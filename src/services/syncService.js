@@ -1,3 +1,6 @@
+import PouchDBWebDAVSync from './PouchDBWebDAVSync';
+import WebDAVManager from './WebDAVManager';
+
 /**
  * 同步服务类，负责管理不同后端的同步功能
  * 包括RemoteStorage、WebDAV和导入导出功能
@@ -18,6 +21,13 @@ export class SyncService {
     SYNCING: 'syncing',
     ERROR: 'error'
   };
+  // 初始化WebDAVManager
+  static webDAVManager = null;
+  
+  
+  // 初始化PouchDBWebDAVSync
+  static pouchDBWebDAVSync = null;
+
 
   /**
    * 获取指定后端的同步函数
@@ -46,6 +56,20 @@ export class SyncService {
         };
       default:
         throw new Error(`Unknown sync backend: ${backend}`);
+    }
+  }
+
+  async startSync() {
+    this.webDAVManager = new WebDAVManager()
+    this.pouchDBWebDAVSync = new PouchDBWebDAVSync(this.webDAVManager);
+    let config = this.getWebDAVConfig()
+    let webdavEnabled = config.enabled || false;
+    
+    if (webdavEnabled) {
+      await this.webDAVManager.configure(config);
+      this.pouchDBWebDAVSync.fullSync();
+    } else {
+      console.log('WebDAV is not enabled');
     }
   }
 
