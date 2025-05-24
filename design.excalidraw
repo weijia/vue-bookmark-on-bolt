@@ -1545,10 +1545,10 @@
     {
       "id": "q0xp8Fi76tYERzMHKRxc5",
       "type": "rectangle",
-      "x": 607.5,
-      "y": 205,
+      "x": 627.5,
+      "y": 198.75,
       "width": 210.99999999999997,
-      "height": 60,
+      "height": 85,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -1564,8 +1564,8 @@
         "type": 3
       },
       "seed": 370446191,
-      "version": 370,
-      "versionNonce": 1816134273,
+      "version": 383,
+      "versionNonce": 279552449,
       "isDeleted": false,
       "boundElements": [
         {
@@ -1577,17 +1577,17 @@
           "type": "arrow"
         }
       ],
-      "updated": 1748061598271,
+      "updated": 1748063584881,
       "link": null,
       "locked": false
     },
     {
       "id": "7g_v4r-bAqYaCd4Rs54sQ",
       "type": "text",
-      "x": 615.5800628662109,
-      "y": 222.5,
+      "x": 635.5800628662109,
+      "y": 203.75,
       "width": 194.83987426757812,
-      "height": 25,
+      "height": 75,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -1601,30 +1601,30 @@
       "index": "am",
       "roundness": null,
       "seed": 1523501455,
-      "version": 362,
-      "versionNonce": 370848193,
+      "version": 417,
+      "versionNonce": 561103265,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1748061340530,
+      "updated": 1748063584881,
       "link": null,
       "locked": false,
-      "text": "bookmark/tag store",
+      "text": "bookmark/tag store\nstate.bookmark <-\nbookmark dict",
       "fontSize": 20,
       "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "q0xp8Fi76tYERzMHKRxc5",
-      "originalText": "bookmark/tag store",
+      "originalText": "bookmark/tag store\nstate.bookmark <- bookmark dict",
       "autoResize": true,
       "lineHeight": 1.25
     },
     {
       "id": "qiAGq-kgM-SyQXOxEoKjE",
       "type": "arrow",
-      "x": 563,
-      "y": 239,
-      "width": 36.25,
-      "height": 1.25,
+      "x": 562.4847730071544,
+      "y": 241.35959348629436,
+      "width": 57.481069186352556,
+      "height": 0.5678330157577705,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -1640,11 +1640,11 @@
         "type": 2
       },
       "seed": 1291200591,
-      "version": 38,
-      "versionNonce": 2129438817,
+      "version": 51,
+      "versionNonce": 1206576513,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1748061602533,
+      "updated": 1748063584881,
       "link": null,
       "locked": false,
       "points": [
@@ -1653,8 +1653,8 @@
           0
         ],
         [
-          36.25,
-          -1.25
+          57.481069186352556,
+          -0.5678330157577705
         ]
       ],
       "lastCommittedPoint": null,

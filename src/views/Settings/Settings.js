@@ -58,14 +58,14 @@ export default {
     }
   },
   created() {
-    this.initSync()
+    // this.initSync()
     // 初始化暗黑模式
     this.isDarkMode = localStorage.getItem('darkMode') === 'true'
     // 初始化WebDAV自动同步
     this.setupWebDAVAutoSync()
   },
   mounted() {
-    this.monitorSyncStatus()
+    // this.monitorSyncStatus()
   },
   beforeDestroy() {
     if (this.syncStatusInterval) {

@@ -1,5 +1,35 @@
+/**
+ * 管理应用数据同步的Vuex模块
+ * 职责：
+ * - 维护同步相关状态(RemoteStorage, WebDAV, PouchDB等)
+ * - 提供同步操作接口
+ * - 处理同步错误和状态更新
+ */
 import { SyncService } from '../../services/syncService';
 const syncService = new SyncService();
+
+// 从localStorage加载WebDAV配置
+function loadWebDAVConfig() {
+  try {
+    const config = localStorage.getItem('webdavConfig');
+    return config ? JSON.parse(config) : {
+      enabled: false,
+      url: '',
+      username: '',
+      password: '',
+      syncInterval: 30
+    };
+  } catch (error) {
+    console.warn('Failed to load WebDAV config:', error);
+    return {
+      enabled: false,
+      url: '',
+      username: '',
+      password: '', 
+      syncInterval: 30
+    };
+  }
+}
 
 export default {
   namespaced: true,
@@ -13,13 +43,7 @@ export default {
       remoteStorage: null,
       webdav: null
     },
-    webdavConfig: {
-      enabled: false,
-      url: '',
-      username: '',
-      password: '',
-      syncInterval: 30 // minutes
-    },
+    webdavConfig: loadWebDAVConfig(),
     currentBackend: null,
     isSyncing: false, // 新增：用于跟踪同步状态
     lastSyncAttempt: null // 新增：用于跟踪上次同步尝试时间
@@ -71,12 +95,6 @@ export default {
           remoteStorage.on('ready', () => {
             commit('setSyncStatus', { backend: 'remoteStorage', status: 'connected' });
             commit('setCurrentBackend', 'remoteStorage');
-            // 只在首次准备就绪时同步
-            if (!state.lastSyncAttempt) {
-              dispatch('debouncedSync', 'remoteStorage').catch(err => {
-                console.warn('Initial sync failed:', err);
-              });
-            }
           });
 
           remoteStorage.on('connected', () => {
@@ -108,75 +126,6 @@ export default {
       }
     },
 
-    // 使用防抖的同步操作
-    debouncedSync: syncService.debounce(async function({ state, commit, dispatch }, backend) {
-      // 检查是否已经在同步中
-      if (state.isSyncing) {
-        console.log('Sync already in progress, skipping...');
-        return;
-      }
-
-      // 检查距离上次同步尝试是否太近（小于5秒）
-      const now = Date.now();
-      if (state.lastSyncAttempt && (now - state.lastSyncAttempt) < 5000) {
-        console.log('Last sync attempt too recent, skipping...');
-        return;
-      }
-
-      commit('setLastSyncAttempt', now);
-      
-      try {
-        commit('setIsSyncing', true);
-        commit('setSyncStatus', { backend, status: 'syncing' });
-
-        if (backend === 'remoteStorage') {
-          if (!state.remoteStorage) {
-            console.warn('RemoteStorage not available for sync');
-            commit('setSyncStatus', { backend, status: 'disconnected' });
-            return;
-          }
-          
-          try {
-            const syncData = await debouncedSyncWithRemoteStorage(state);
-            if (syncData.bookmarks) {
-              await dispatch('bookmarks/syncWithRemote', syncData.bookmarks, { root: true });
-            }
-            if (syncData.tags) {
-              await dispatch('tags/syncWithRemote', syncData.tags, { root: true });
-            }
-            commit('setSyncStatus', { backend, status: 'connected' });
-            commit('setSyncTime', { backend, time: now });
-          } catch (error) {
-            console.warn('RemoteStorage sync error:', error);
-            commit('setSyncStatus', { backend, status: 'error' });
-          }
-        } else {
-          try {
-            const syncFunction = getSyncFunction(backend);
-            const syncData = await syncFunction.sync(state);
-            // 处理其他后端的同步逻辑
-            commit('setSyncStatus', { backend, status: 'connected' });
-            commit('setSyncTime', { backend, time: now });
-          } catch (error) {
-            console.warn(`${backend} sync error:`, error);
-            commit('setSyncStatus', { backend, status: 'error' });
-          }
-        }
-      } catch (error) {
-        console.warn(`Unexpected sync error:`, error);
-        commit('setSyncStatus', { backend, status: 'error' });
-      } finally {
-        commit('setIsSyncing', false);
-      }
-    }, 1000),
-
-    // 原始sync方法重定向到debouncedSync
-    async sync({ dispatch }, backend) {
-      return dispatch('debouncedSync', backend).catch(err => {
-        console.warn('Sync operation failed:', err);
-      });
-    },
-
     async manualWebDAVSync({ commit, state, dispatch, rootState }) {
       if (state.isSyncing){
         console.log('Sync already in progress, skipping...');
@@ -184,7 +133,7 @@ export default {
       }
       try {
         commit('setIsSyncing', true);
-        await syncService.syncWithWebDAV(rootState);
+        await syncService.startSync();
         
         commit('setSyncStatus', { backend: 'webdav', status: 'connected' });
         commit('setSyncTime', { backend: 'webdav', time: new Date() });
@@ -212,6 +161,19 @@ export default {
             dispatch('manualWebDAVSync');
           }
         }, intervalMs);
+      }
+    },
+
+    async startSync({ commit, state, dispatch }) {
+      if (state.isSyncing) {
+        console.log('Sync already in progress, skipping...');
+        return;
+      }
+
+      if (state.webdavConfig.enabled) {
+        await dispatch('manualWebDAVSync');
+      } else {
+        console.warn('WebDAV sync is not enabled'); 
       }
     }
   },

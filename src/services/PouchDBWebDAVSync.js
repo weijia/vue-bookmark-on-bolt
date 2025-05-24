@@ -221,16 +221,16 @@ export default class PouchDBWebDAVSync {
   }
 
   // 双向同步
-  async fullSync(filename = 'data.json') {
-    try {
-      await this.syncFromWebDAV(filename);
-      await this.syncToWebDAV(filename);
-      return true;
-    } catch (error) {
-      console.error('Error during full sync:', error);
-      throw error;
-    }
-  }
+  // async fullSync(filename = 'data.json') {
+  //   try {
+  //     await this.syncFromWebDAV(filename);
+  //     await this.syncToWebDAV(filename);
+  //     return true;
+  //   } catch (error) {
+  //     console.error('Error during full sync:', error);
+  //     throw error;
+  //   }
+  // }
 
   // 获取同步状态
   getStatus() {
