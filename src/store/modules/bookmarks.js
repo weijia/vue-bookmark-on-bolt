@@ -25,9 +25,9 @@ const getters = {
   
   bookmarksByTag: state => tagId => {
     const escapedTagId = escapeId(tagId);
-    console.log('escapedTagId:', escapedTagId);
+    // console.log('escapedTagId:', escapedTagId);
     return state.bookmarks.filter(bookmark => 
-      bookmark.tagIds.includes(escapedTagId)
+      bookmark.tagIds?bookmark.tagIds.includes(escapedTagId):false
     );
   },
   

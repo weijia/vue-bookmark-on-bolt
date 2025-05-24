@@ -178,14 +178,14 @@ export default class PouchDBWebDAVSync {
     try {
       // 1. 从WebDAV获取原始数据
       const webDAVData = await this.webDAVManager.load(filename);
-      console.log('webDAVData: ', webDAVData);
+      // console.log('webDAVData: ', webDAVData);
 
       // 2. 转换数据格式为PouchDB格式
       const pouchData = webDAVData.map(doc => transformFunc(doc));
 
       // 3. 获取当前PouchDB数据用于冲突检测
       const currentData = await this.#getAllFromPouchDB(pouchDB);
-      console.log('currentData: ', currentData);
+      // console.log('currentData: ', currentData);
       const currentMap = new Map(currentData.map(doc => [doc.id, doc]));
 
       // 4. 合并数据
@@ -201,11 +201,11 @@ export default class PouchDBWebDAVSync {
             return localDoc; // 保留本地版本
           }
         }
-        console.log('remoteDoc: ', remoteDoc);
+        // console.log('remoteDoc: ', remoteDoc);
         return remoteDoc;
       });
 
-      console.log('syncFromWebDAV: ', docsToSave)
+      // console.log('syncFromWebDAV: ', docsToSave)
 
       // 4. 保存到PouchDB
       const result = await this.#saveToPouchDB(pouchDB, docsToSave);
