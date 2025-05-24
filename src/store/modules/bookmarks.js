@@ -567,7 +567,7 @@ const actions = {
       
       // 批量写入IndexedDB
       if (updates.length > 0) {
-        await bookmarksDB.bulkPut(updates);
+        await bookmarksDB.bulkDocs(updates);
       }
       
       // 批量添加新书签

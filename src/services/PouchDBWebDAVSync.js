@@ -166,7 +166,7 @@ export default class PouchDBWebDAVSync {
   }
 
   // 从WebDAV同步数据
-  async syncFromWebDAV(filename = 'data.json', pouchDB, transformFunc = null) {
+  async syncFromWebDAV(filename, pouchDB, transformFunc = null) {
     if (this.isSyncing) {
       console.warn('Sync already in progress');
       return false;
@@ -178,30 +178,34 @@ export default class PouchDBWebDAVSync {
     try {
       // 1. 从WebDAV获取原始数据
       const webDAVData = await this.webDAVManager.load(filename);
+      console.log('webDAVData: ', webDAVData);
 
       // 2. 转换数据格式为PouchDB格式
       const pouchData = webDAVData.map(doc => transformFunc(doc));
 
       // 3. 获取当前PouchDB数据用于冲突检测
       const currentData = await this.#getAllFromPouchDB(pouchDB);
-      const currentMap = new Map(currentData.map(doc => [doc._id, doc]));
+      console.log('currentData: ', currentData);
+      const currentMap = new Map(currentData.map(doc => [doc.id, doc]));
 
       // 4. 合并数据
       const docsToSave = pouchData.map(remoteDoc => {
-        const localDoc = currentMap.get(remoteDoc._id);
+        const localDoc = currentMap.get(remoteDoc.id);
         
         // 冲突解决策略：保留最新修改的文档
         if (localDoc) {
-          const remoteModified = remoteDoc._rev ? parseInt(remoteDoc._rev.split('-')[0]) : 0;
-          const localModified = parseInt(localDoc._rev.split('-')[0]);
+          const remoteModified = remoteDoc.updatedAt ? parseInt(remoteDoc.updatedAt) : 0;
+          const localModified = parseInt(localDoc.updatedAt);
           
           if (localModified > remoteModified) {
             return localDoc; // 保留本地版本
           }
         }
-        
+        console.log('remoteDoc: ', remoteDoc);
         return remoteDoc;
       });
+
+      console.log('syncFromWebDAV: ', docsToSave)
 
       // 4. 保存到PouchDB
       const result = await this.#saveToPouchDB(pouchDB, docsToSave);
