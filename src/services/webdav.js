@@ -256,7 +256,7 @@ export async function loadFromWebDAV(filename) {
     const path = config.path || '/';
     const fullPath = `${path}/${filename}`.replace(/\/+/g, '/');
 
-    console.log(`Loading ${filename} from WebDAV path: ${fullPath}`);
+    console.log(`loadFromWebDAV.Loading ${filename} from WebDAV path: ${fullPath}`);
 
     try {
       const exists = await webdavClient.exists(fullPath);

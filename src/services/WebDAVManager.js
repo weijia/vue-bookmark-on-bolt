@@ -70,7 +70,7 @@ export default class WebDAVManager {
         this.isConfigured = true;
 
         // 确保目录存在
-        const path = config.path || '/';
+        // const path = config.path || '/';
         // try {
         //   await this.webdavClient.createDirectory(path, { recursive: true });
         // } catch (dirError) {
@@ -189,7 +189,7 @@ export default class WebDAVManager {
     try {
       const fullPath = filename.replace(/\/+/g, '/');
 
-      console.log(`Loading ${filename} from WebDAV path: ${fullPath}`);
+      console.log(`load.Loading ${filename} from WebDAV path: ${fullPath}`);
 
       // try {
       //   const exists = await this.webdavClient.exists(fullPath);

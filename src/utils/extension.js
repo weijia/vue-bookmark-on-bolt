@@ -55,25 +55,30 @@ export async function updateBookmarkInDB(store, bookmark) {
   }
 }
 
-// 从chrome.storage.local同步书签到IndexedDB
-export async function syncBookmarksFromChromeStorage(store) {
+// 批量同步所有书签到IndexedDB (高效版本)
+export async function syncAllBookmarksFromChromeStorage(store) {
   try {
     await store.dispatch('bookmarks/loadBookmarks');
     const bookmarks = await getBookmarksFromStorage();
     
     if (Array.isArray(bookmarks)) {
-      console.log('Syncing bookmarks from chrome.storage.local to IndexedDB');
+      console.log('Bulk syncing bookmarks from chrome.storage.local to IndexedDB');
       
-      for (const bookmark of bookmarks) {
-        await updateBookmarkInDB(store, bookmark);
-      }
+      // 批量添加/更新书签
+      await store.dispatch('bookmarks/bulkUpdateBookmarks', bookmarks);
       
-      console.log('Sync completed');
+      console.log('Bulk sync completed');
     }
   } catch (error) {
-    console.warn('Failed to sync bookmarks from chrome.storage.local:', error);
+    console.warn('Failed to bulk sync bookmarks from chrome.storage.local:', error);
     throw error;
   }
+}
+
+// 从chrome.storage.local同步书签到IndexedDB (旧版，已弃用)
+export async function syncBookmarksFromChromeStorage(store) {
+  console.warn('syncBookmarksFromChromeStorage is deprecated, use syncAllBookmarksFromChromeStorage instead');
+  return syncAllBookmarksFromChromeStorage(store);
 }
 
 // 初始化浏览器扩展消息监听

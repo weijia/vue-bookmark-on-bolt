@@ -512,6 +512,85 @@ const actions = {
     } finally {
       commit('setLoading', false);
     }
+  },
+  
+  async bulkUpdateBookmarks({ commit, state }, bookmarks) {
+    try {
+      commit('setLoading', true);
+      
+      // 获取当前书签映射(以id为key)
+      const currentBookmarks = state.bookmarks;
+      const bookmarksMap = new Map(currentBookmarks.map(b => [b.id, b]));
+      
+      const updates = [];
+      const newBookmarks = [];
+      
+      // 处理批量书签
+      for (const bookmark of bookmarks) {
+        if (!bookmark.id) continue;
+        
+        const existing = bookmarksMap.get(bookmark.id);
+        if (existing) {
+          // 更新现有书签
+          const updated = {
+            ...existing,
+            ...bookmark,
+            _id: existing._id,
+            _rev: existing._rev,
+            updatedAt: new Date().toISOString()
+          };
+          updates.push(updated);
+          commit('updateBookmark', { id: existing.id, updatedBookmark: updated });
+        } else {
+          // 添加新书签
+          const newId = bookmark.id || crypto.randomUUID();
+          const newBookmark = {
+            _id: newId,
+            id: newId,
+            title: bookmark.title || '未命名书签',
+            url: bookmark.url,
+            description: bookmark.description || '',
+            favicon: bookmark.favicon || `${new URL(bookmark.url).origin}/favicon.ico`,
+            tagIds: bookmark.tagIds || [],
+            folderId: bookmark.folderId || 'my',
+            topUpTime: bookmark.topUpTime || 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastVisited: null,
+            isValid: state.isForceValid ? true : await checkUrlValidity(bookmark.url),
+            visitCount: 0
+          };
+          updates.push(newBookmark);
+          newBookmarks.push(newBookmark);
+        }
+      }
+      
+      // 批量写入IndexedDB
+      if (updates.length > 0) {
+        await bookmarksDB.bulkPut(updates);
+      }
+      
+      // 批量添加新书签
+      if (newBookmarks.length > 0) {
+        commit('setBookmarks', [...currentBookmarks, ...newBookmarks]);
+      }
+      
+      // 同步到chrome.storage.local
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        try {
+          await chrome.storage.local.set({ bookmarks: state.bookmarks });
+        } catch (error) {
+          console.error('Error syncing to chrome.storage.local:', error);
+        }
+      }
+      
+      return { updated: updates.length - newBookmarks.length, added: newBookmarks.length };
+    } catch (error) {
+      commit('setError', error.message);
+      throw error;
+    } finally {
+      commit('setLoading', false);
+    }
   }
 };
 
