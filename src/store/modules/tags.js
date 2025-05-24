@@ -68,8 +68,8 @@ const actions = {
               id: remoteTag.id,
               name: remoteTag.name || '未命名标签',
               color: remoteTag.color || '#3b82f6',
-              createdAt: remoteTag.createdAt || new Date().toISOString(),
-              updatedAt: remoteTag.updatedAt || new Date().toISOString()
+              createdAt: remoteTag.createdAt || Math.floor(Date.now() / 1000),
+              updatedAt: remoteTag.updatedAt || Math.floor(Date.now() / 1000)
             };
             
             await tagsDB.put(newTag);
@@ -77,8 +77,12 @@ const actions = {
             added++;
           } else {
             // 比较更新时间，决定是否更新
-            const remoteUpdatedAt = new Date(remoteTag.updatedAt || 0);
-            const localUpdatedAt = new Date(existingTag.updatedAt || 0);
+            const remoteUpdatedAt = typeof remoteTag.updatedAt === 'number' 
+              ? remoteTag.updatedAt 
+              : Math.floor(new Date(remoteTag.updatedAt || 0).getTime() / 1000);
+            const localUpdatedAt = typeof existingTag.updatedAt === 'number'
+              ? existingTag.updatedAt
+              : Math.floor(new Date(existingTag.updatedAt || 0).getTime() / 1000);
             
             if (remoteUpdatedAt > localUpdatedAt) {
               // 远程版本更新，更新本地
@@ -158,8 +162,8 @@ const actions = {
         id: uuid,
         name: tagData.name,
         color: tagData.color || '#3b82f6',
-        createdAt: tagData.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: tagData.createdAt || Math.floor(Date.now() / 1000),
+        updatedAt: Math.floor(Date.now() / 1000)
       };
 
       await tagsDB.put(tag);
@@ -181,7 +185,7 @@ const actions = {
       const updatedTag = {
         ...doc,
         ...updates,
-        updatedAt: new Date().toISOString()
+        updatedAt: Math.floor(Date.now() / 1000)
       };
       
       await tagsDB.put(updatedTag);
@@ -234,15 +238,15 @@ const actions = {
         // 处理时间戳 - 支持Unix时间戳（数字）或ISO字符串
         const createdAt = tagData.createdAt 
           ? (typeof tagData.createdAt === 'number' 
-              ? new Date(tagData.createdAt * 1000).toISOString() 
-              : tagData.createdAt)
-          : new Date().toISOString();
+              ? tagData.createdAt 
+              : Math.floor(new Date(tagData.createdAt).getTime() / 1000))
+          : Math.floor(Date.now() / 1000);
           
         const updatedAt = tagData.updatedAt
           ? (typeof tagData.updatedAt === 'number'
-              ? new Date(tagData.updatedAt * 1000).toISOString()
-              : tagData.updatedAt)
-          : new Date().toISOString();
+              ? tagData.updatedAt
+              : Math.floor(new Date(tagData.updatedAt).getTime() / 1000))
+          : Math.floor(Date.now() / 1000);
 
         // 创建基本标签对象
         const tag = {
@@ -268,7 +272,7 @@ const actions = {
           await tagsDB.put({
             ...existingTag,
             ...tag,
-            updatedAt: new Date().toISOString()
+            updatedAt: Math.floor(Date.now() / 1000)
           });
           commit('updateTag', { id: uuid, updatedTag: tag });
         } else {
