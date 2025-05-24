@@ -1,6 +1,7 @@
 import { mapState, mapActions } from 'vuex'
 import { syncService } from '../../services/syncService'
 import { escapeId } from '../../utils/idEscape'
+import PouchDbTideMarkSync from '../../services/PouchDbTideMarkSync'
 
 export default {
   name: 'Settings',
@@ -252,8 +253,9 @@ export default {
           throw new Error('Invalid format: Expected an array of bookmarks')
         }
         
+        let pouchDbTideMarkSync = new PouchDbTideMarkSync();
 
-        this.$store.dispatch('bookmarks/importBookmarks', data);
+        this.$store.dispatch('bookmarks/bulkUpdateBookmarks', data.map(doc => pouchDbTideMarkSync.convertToPouchDBFormat(doc)));
 
         // 重置文件输入
         event.target.value = ''

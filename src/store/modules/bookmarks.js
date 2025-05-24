@@ -1,6 +1,8 @@
 import { bookmarksDB, syncDataToWebDAV } from '../../services/storage';
 import { checkUrlValidity } from '../../utils/urlValidator';
 import { escapeId } from '../../utils/idEscape';
+import PouchDbTideMarkSync from '../../services/PouchDbTideMarkSync';
+import StorageService from '../../services/StorageService';
 
 const state = {
   bookmarks: [],
@@ -273,72 +275,6 @@ const actions = {
     }
   },
 
-  async syncToWebDAV({ state, rootState, dispatch }) {
-    try {
-      // 获取本地数据，移除PouchDB特定字段
-      const localBookmarks = state.bookmarks.map(bookmark => {
-        const { _id, _rev, ...cleanBookmark } = bookmark;
-        return cleanBookmark;
-      });
-
-      const localTags = rootState.tags.tags.map(tag => {
-        const { _id, _rev, ...cleanTag } = tag;
-        return cleanTag;
-      });
-
-      // 从WebDAV加载远程数据
-      let remoteBookmarks = [];
-      let remoteTags = [];
-      try {
-        const remoteData = await dispatch('loadFromWebDAV');
-        remoteBookmarks = remoteData?.bookmarks || [];
-        remoteTags = remoteData?.tags || [];
-      } catch (error) {
-        console.warn('Error loading from WebDAV:', error);
-      }
-
-      // 合并数据
-      const mergeItems = (localItems, remoteItems) => {
-        const mergedMap = new Map();
-
-        // 先添加远程数据
-        remoteItems.forEach(item => {
-          if (item && item.id) {
-            mergedMap.set(item.id, { ...item });
-          }
-        });
-
-        // 然后添加或更新本地数据
-        localItems.forEach(item => {
-          if (item && item.id) {
-            const existingItem = mergedMap.get(item.id);
-            if (!existingItem ||
-                (item.updatedAt && existingItem.updatedAt &&
-                 new Date(item.updatedAt) > new Date(existingItem.updatedAt))) {
-              mergedMap.set(item.id, { ...item });
-            }
-          }
-        });
-
-        return Array.from(mergedMap.values());
-      };
-
-      const mergedBookmarks = mergeItems(localBookmarks, remoteBookmarks);
-      const mergedTags = mergeItems(localTags, remoteTags);
-
-      console.log(`Merged data: bookmarks(${localBookmarks.length} local + ${remoteBookmarks.length} remote = ${mergedBookmarks.length} merged)`);
-      console.log(`Merged data: tags(${localTags.length} local + ${remoteTags.length} remote = ${mergedTags.length} merged)`);
-
-      // 保存合并后的数据到WebDAV
-      await syncDataToWebDAV(mergedBookmarks, mergedTags);
-
-      return true;
-    } catch (error) {
-      console.error('Failed to sync to WebDAV:', error);
-      throw error;
-    }
-  },
-
   async syncWithRemote({ commit, state }, remoteBookmarks) {
     try {
       commit('setLoading', true);
@@ -422,94 +358,33 @@ const actions = {
     }
   },
   
-  async importBookmarks({ commit, state, dispatch }, bookmarks) {
-    try {
-      commit('setLoading', true);
-      let importedCount = 0;
-      const errors = [];
-      
-      dispatch('bulkUpdateBookmarks', bookmarks);
-      
-      return { importedCount, errors };
-    } catch (error) {
-      commit('setError', error.message);
-      throw error;
-    } finally {
-      commit('setLoading', false);
-    }
-  },
-  
+  // 用来批量更新pouchdb的数据和chrome.storage.local的数据
   async bulkUpdateBookmarks({ commit, state }, bookmarks) {
     try {
       commit('setLoading', true);
       
-      // 获取当前书签映射(以id为key)
-      const currentBookmarks = state.bookmarks;
-      const bookmarksMap = new Map(currentBookmarks.map(b => [b.id, b]));
-      
-      const updates = [];
-      const newBookmarks = [];
-      
-      // 处理批量书签
-      for (const bookmark of bookmarks) {
-        if (!bookmark.id) continue;
-        
-        const existing = bookmarksMap.get(bookmark.id);
-        if (existing) {
-          // 更新现有书签
-          const updated = {
-            ...existing,
-            ...bookmark,
-            _id: existing._id,
-            _rev: existing._rev,
-            updatedAt: new Date().toISOString()
-          };
-          updates.push(updated);
-          commit('updateBookmark', { id: existing.id, updatedBookmark: updated });
-        } else {
-          // 添加新书签
-          const newId = bookmark.id || crypto.randomUUID();
-          const newBookmark = {
-            _id: newId,
-            id: newId,
-            title: bookmark.title || '未命名书签',
-            url: bookmark.url,
-            description: bookmark.description || '',
-            favicon: bookmark.favicon || `${new URL(bookmark.url).origin}/favicon.ico`,
-            tagIds: bookmark.tagIds || [],
-            folderId: bookmark.folderId || 'my',
-            topUpTime: bookmark.topUpTime || 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            lastVisited: null,
-            isValid: state.isForceValid ? true : await checkUrlValidity(bookmark.url),
-            visitCount: 0
-          };
-          updates.push(newBookmark);
-          newBookmarks.push(newBookmark);
-        }
-      }
-      
-      // 批量写入IndexedDB
-      if (updates.length > 0) {
-        await bookmarksDB.bulkDocs(updates);
-      }
-      
-      // 批量添加新书签
-      if (newBookmarks.length > 0) {
-        commit('setBookmarks', [...currentBookmarks, ...newBookmarks]);
-      }
-      
+      let importedCount = 0;
+      const errors = [];
+
+      let storageService = new StorageService();
+      let result = await storageService.importBookmarks(bookmarks);
+
+      console.log('Import result:', result);
+      importedCount = result.updated + result.added;
+      if(result.errors) errors.push(...result.errors);
       // 同步到chrome.storage.local
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         try {
-          await chrome.storage.local.set({ bookmarks: state.bookmarks });
+          chrome.storage.local.set({ bookmarks: state.bookmarks });
         } catch (error) {
           console.error('Error syncing to chrome.storage.local:', error);
         }
       }
+      let allBookmarks = await storageService.getAllBookmarks();
+      commit('setBookmarks', allBookmarks);
       
-      return { updated: updates.length - newBookmarks.length, added: newBookmarks.length };
+      console.log({ importedCount, errors });
+      return { importedCount, errors };
     } catch (error) {
       commit('setError', error.message);
       throw error;

@@ -7,11 +7,9 @@
  * - 提供数据库实例访问
  */
 import PouchDB from 'pouchdb-browser';
-import { escapeId, unescapeId } from '../utils/idEscape';
 import RemoteStorage from 'remotestoragejs';
 import store from '../store';
-import WebDAVManager from './WebDAVManager';
-import PouchDBWebDAVSync from './PouchDBWebDAVSync';
+import { escapeId } from '../utils/idEscape';
 
 export default class StorageService {
   constructor() {
@@ -277,94 +275,6 @@ export default class StorageService {
   }
 
   /**
-   * 配置WebDAV同步 (setup是setupWebDAVSync的别名)
-   * @param {Object} config WebDAV配置
-   */
-  async setup(config) {
-    // return this.setupWebDAVSync(config);
-  }
-
-  /**
-   * 配置WebDAV同步
-   * @param {Object} config WebDAV配置
-   */
-  // async setupWebDAVSync(config) {
-  //   try {
-  //     this.webdavConfig = config;
-  //     this.webdavEnabled = config.enabled || false;
-
-  //     if (this.webdavEnabled) {
-  //       this.webDAVManager = new WebDAVManager();
-  //       await this.webDAVManager.configure(config);
-
-  //       this.pouchDBWebDAVSync = new PouchDBWebDAVSync(this.bookmarksDB, this.webDAVManager);
-
-  //       localStorage.setItem('webdavConfig', JSON.stringify(config));
-
-  //       await this.pouchDBWebDAVSync.syncFromWebDAV('collection.json');
-  //       await this.pouchDBWebDAVSync.syncToWebDAV('collection.json');
-
-  //       return true;
-  //     } else {
-  //       this.webDAVManager = null;
-  //       this.pouchDBWebDAVSync = null;
-  //       localStorage.removeItem('webdavConfig');
-  //       return false;
-  //     }
-  //   } catch (error) {
-  //     console.error('WebDAV configuration error:', error);
-  //     this.webdavEnabled = false;
-  //     this.webDAVManager = null;
-  //     this.pouchDBWebDAVSync = null;
-  //     throw error;
-  //   }
-  // }
-
-  /**
-   * 从WebDAV服务器同步数据
-   */
-  // async syncFromWebDAV() {
-  //   if (!this.webdavEnabled || !this.webdavConfig || !this.pouchDBWebDAVSync) {
-  //     console.warn('WebDAV is not enabled or configured');
-  //     return false;
-  //   }
-
-  //   try {
-  //     await this.pouchDBWebDAVSync.syncFromWebDAV('collection.json');
-
-  //     const updatedBookmarks = await this.bookmarksDB.allDocs({ include_docs: true });
-  //     store.commit('bookmarks/setBookmarks', updatedBookmarks.rows.map(row => row.doc));
-
-  //     const updatedTags = await this.tagsDB.allDocs({ include_docs: true });
-  //     store.commit('tags/setTags', updatedTags.rows.map(row => row.doc));
-
-  //     return true;
-  //   } catch (error) {
-  //     console.error('Failed to sync from WebDAV:', error);
-  //     throw error;
-  //   }
-  // }
-
-  /**
-   * 同步数据到WebDAV服务器
-   */
-  // async syncDataToWebDAV() {
-  //   if (!this.webdavEnabled || !this.webdavConfig || !this.pouchDBWebDAVSync) {
-  //     console.warn('WebDAV is not enabled or configured');
-  //     return false;
-  //   }
-
-  //   try {
-  //     await this.pouchDBWebDAVSync.syncToWebDAV('collection.json');
-  //     this.lastSyncTime = new Date();
-  //     return true;
-  //   } catch (error) {
-  //     console.error('Failed to sync data to WebDAV:', error);
-  //     throw error;
-  //   }
-  // }
-
-  /**
    * 同步书签数据
    */
   async _syncBookmarks() {
@@ -488,6 +398,33 @@ export default class StorageService {
       throw error;
     }
   }
+  
+  // 保存数据到PouchDB
+  async #saveToPouchDB(pouchDb, docs) {
+    try {
+      const result = await pouchDb.bulkDocs(docs);
+      return result;
+    } catch (error) {
+      console.error('Error saving data to pouchDb:', error);
+      throw error;
+    }
+  }
+
+  async getAllBookmarks() {
+    return this.#getAllFromPouchDB(this.bookmarksDB);
+  }
+
+  async getAllTags() {
+    return this.#getAllFromPouchDB(this.tagsDB);
+  }
+
+  async importBookmarks(data) {
+    return this.importData(this.bookmarksDB, data);
+  }
+
+  async importTags(data) {
+    return this.importData(this.tagsDB, data);
+  }
 
   async importData(pouchDb, data) {
     try {
@@ -497,7 +434,7 @@ export default class StorageService {
       const currentMap = new Map(currentData.map(doc => [doc.id, doc]));
 
       // 4. 合并数据
-      const docsToSave = pouchData.map(remoteDoc => {
+      const docsToSave = data.map(remoteDoc => {
         const localDoc = currentMap.get(remoteDoc.id);
         
         // 冲突解决策略：保留最新修改的文档
@@ -516,10 +453,11 @@ export default class StorageService {
       // console.log('syncFromWebDAV: ', docsToSave)
 
       // 4. 保存到PouchDB
-      const result = await this.#saveToPouchDB(pouchDB, docsToSave);
+      return await this.#saveToPouchDB(pouchDb, docsToSave);
+      // console.log(`Saved ${result.length} items to PouchDB`);
     }
     catch (error) {
-      console.error('Error importing bookmarks:', error);
+      console.error('Error importing data:', error);
       throw error; 
     }
   }
