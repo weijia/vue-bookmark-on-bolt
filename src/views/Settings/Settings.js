@@ -232,16 +232,38 @@ export default {
         console.error('Failed to export bookmarks:', error)
       }
     },
-    importBookmarks(event) {
+    async importBookmarks(event) {
       try {
         const file = event.target.files[0]
         if (!file) return
-        // 导入书签的逻辑
-        console.log('Importing bookmarks from file:', file.name)
-        // 重置文件输入，以便可以再次选择同一文件
+      
+
+        const content = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = e => resolve(e.target.result)
+          reader.onerror = e => reject(e)
+          reader.readAsText(file)
+        })
+      
+        const data = JSON.parse(content)
+      
+        // 检查是否为数组
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid format: Expected an array of bookmarks')
+        }
+        
+
+        this.$store.dispatch('bookmarks/importBookmarks', data);
+
+        // 重置文件输入
         event.target.value = ''
       } catch (error) {
         console.error('Failed to import bookmarks:', error)
+        this.$notify({
+          title: 'Import Failed',
+          message: error.message || 'Failed to import bookmarks',
+          type: 'error'
+        })
       }
     },
     async importTags(event) {

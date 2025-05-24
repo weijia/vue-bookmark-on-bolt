@@ -97,20 +97,6 @@ export default class PouchDBWebDAVSync {
     this.syncListeners.forEach(listener => listener(event));
   }
 
-  // 从PouchDB获取所有数据
-  async #getAllFromPouchDB(pouchDB) {
-    try {
-      const result = await pouchDB.allDocs({
-        include_docs: true,
-        attachments: true
-      });
-      return result.rows.map(row => row.doc);
-    } catch (error) {
-      console.error('Error getting data from PouchDB:', error);
-      throw error;
-    }
-  }
-
   // 保存数据到PouchDB
   async #saveToPouchDB(pouchDb, docs) {
     try {
@@ -183,32 +169,6 @@ export default class PouchDBWebDAVSync {
       // 2. 转换数据格式为PouchDB格式
       const pouchData = webDAVData.map(doc => transformFunc(doc));
 
-      // 3. 获取当前PouchDB数据用于冲突检测
-      const currentData = await this.#getAllFromPouchDB(pouchDB);
-      // console.log('currentData: ', currentData);
-      const currentMap = new Map(currentData.map(doc => [doc.id, doc]));
-
-      // 4. 合并数据
-      const docsToSave = pouchData.map(remoteDoc => {
-        const localDoc = currentMap.get(remoteDoc.id);
-        
-        // 冲突解决策略：保留最新修改的文档
-        if (localDoc) {
-          const remoteModified = remoteDoc.updatedAt ? parseInt(remoteDoc.updatedAt) : 0;
-          const localModified = parseInt(localDoc.updatedAt);
-          
-          if (localModified > remoteModified) {
-            return localDoc; // 保留本地版本
-          }
-        }
-        // console.log('remoteDoc: ', remoteDoc);
-        return remoteDoc;
-      });
-
-      // console.log('syncFromWebDAV: ', docsToSave)
-
-      // 4. 保存到PouchDB
-      const result = await this.#saveToPouchDB(pouchDB, docsToSave);
       console.log(`Saved ${result.length} items to PouchDB`);
 
       this.lastSyncTime = new Date();
