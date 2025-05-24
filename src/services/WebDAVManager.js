@@ -3,6 +3,7 @@ import { createWebDAVClient } from './webdav-client';
 export default class WebDAVManager {
   constructor() {
     this.webdavClient = null;
+    this.path = null;
     this.isConfigured = false;
     this.isInitialized = false;
     this.initializationPromise = null;
@@ -45,7 +46,9 @@ export default class WebDAVManager {
           baseUrl += '/';
         }
 
-        console.log('Using WebDAV base URL:', baseUrl);
+        this.path = config.path;
+
+        console.log('Using WebDAV base URL:', baseUrl, this.path);
 
         this.webdavClient = createWebDAVClient(
           baseUrl,
@@ -100,13 +103,18 @@ export default class WebDAVManager {
     return this.initializationPromise;
   }
 
+  getWebDavFullPath(filename) {
+    this.#checkInitialization();
+    return `${this.path || '/'}/${filename}`.replace(/\/+/g, '/');
+  }
+
   // 保存数据到WebDAV
   async save(filename, data) {
     await this.initializationPromise;
     this.#checkInitialization();
 
     try {
-      const fullPath = filename;
+      const fullPath = this.getWebDavFullPath(filename);
       console.log('WebDAV保存路径:', filename);
 
       const maxRetries = 3;
@@ -187,7 +195,7 @@ export default class WebDAVManager {
     this.#checkInitialization();
 
     try {
-      const fullPath = filename.replace(/\/+/g, '/');
+      const fullPath = this.getWebDavFullPath(filename.replace(/\/+/g, '/'));
 
       console.log(`load.Loading ${filename} from WebDAV path: ${fullPath}`);
 

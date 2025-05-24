@@ -29,6 +29,20 @@ const FIELD_MAPPING = {
   }
 };
 
+function escapeDocId(doc) {
+  if (doc._id) {
+    doc._id = escapeId(doc._id);
+  }
+  return doc;
+}
+
+function unescapeDocId(doc) {
+  if (doc._id) {
+    doc._id = unescapeId(doc._id);
+  }
+  return doc;
+}
+
 export default class PouchDBWebDAVSync {
   constructor(webDAVManager) {
     this.webDAVManager = webDAVManager;
@@ -40,23 +54,8 @@ export default class PouchDBWebDAVSync {
     this.tagsDB = new PouchDB('tags');
   }
 
-  #escapeDocId(doc) {
-    if (doc._id) {
-      doc._id = escapeId(doc._id);
-    }
-    return doc;
-  }
-
-  #unescapeDocId(doc) {
-    if (doc._id) {
-      doc._id = unescapeId(doc._id);
-    }
-    return doc;
-  }
-
-
   // 将PouchDB文档转换为WebDAV格式
-  #convertToWebDAVFormat(pouchDoc) {
+  convertToWebDAVFormat(pouchDoc) {
     const webDAVDoc = {};
     // 转换字段名
     for (const key in pouchDoc) {
@@ -66,11 +65,11 @@ export default class PouchDBWebDAVSync {
         webDAVDoc[key] = pouchDoc[key];
       }
     }
-    return this.#unescapeDocId(webDAVDoc);
+    return unescapeDocId(webDAVDoc);
   }
 
   // 将WebDAV文档转换为PouchDB格式
-  #convertToPouchDBFormat(webDAVDoc) {
+  convertToPouchDBFormat(webDAVDoc) {
     const pouchDoc = {};
     // 转换字段名
     for (const key in webDAVDoc) {
@@ -80,7 +79,7 @@ export default class PouchDBWebDAVSync {
         pouchDoc[key] = webDAVDoc[key];
       }
     }
-    return this.#escapeDocId(pouchDoc);
+    return escapeDocId(pouchDoc);
   }
 
   // 添加同步状态监听器
@@ -113,12 +112,12 @@ export default class PouchDBWebDAVSync {
   }
 
   // 保存数据到PouchDB
-  async #saveToPouchDB(pouchDB, docs) {
+  async #saveToPouchDB(pouchDb, docs) {
     try {
-      const result = await pouchDB.bulkDocs(docs);
+      const result = await pouchDb.bulkDocs(docs);
       return result;
     } catch (error) {
-      console.error('Error saving data to PouchDB:', error);
+      console.error('Error saving data to pouchDb:', error);
       throw error;
     }
   }
@@ -205,7 +204,7 @@ export default class PouchDBWebDAVSync {
       });
 
       // 4. 保存到PouchDB
-      const result = await this.#saveToPouchDB(docsToSave);
+      const result = await this.#saveToPouchDB(pouchDB, docsToSave);
       console.log(`Saved ${result.length} items to PouchDB`);
 
       this.lastSyncTime = new Date();
@@ -233,10 +232,10 @@ export default class PouchDBWebDAVSync {
   双向同步
   async fullSync() {
     try {
-      await this.syncFromWebDAV('tag.json', this.tagsDB, this.#escapeDocId);
-      await this.syncToWebDAV(this.tagsDB, 'tag.json', this.#unescapeDocId);
-      await this.syncFromWebDAV('collection.json', this.bookmarksDB, this.#convertToPouchDBFormat);
-      await this.syncToWebDAV(this.bookmarksDB, 'collection.json', this.#convertToWebDAVFormat);
+      await this.syncFromWebDAV('tag.json', this.tagsDB, escapeDocId);
+      await this.syncToWebDAV(this.tagsDB, 'tag.json', unescapeDocId);
+      await this.syncFromWebDAV('collection.json', this.bookmarksDB, this.convertToPouchDBFormat);
+      await this.syncToWebDAV(this.bookmarksDB, 'collection.json', this.convertToWebDAVFormat);
       return true;
     } catch (error) {
       console.error('Error during full sync:', error);
