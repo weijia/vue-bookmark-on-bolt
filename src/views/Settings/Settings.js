@@ -1,5 +1,6 @@
 import { mapState, mapActions } from 'vuex'
 import { syncService } from '../../services/syncService'
+import { escapeId } from '../../utils/idEscape'
 
 export default {
   name: 'Settings',
@@ -62,7 +63,7 @@ export default {
     // 初始化暗黑模式
     this.isDarkMode = localStorage.getItem('darkMode') === 'true'
     // 初始化WebDAV自动同步
-    this.setupWebDAVAutoSync()
+    // this.setupWebDAVAutoSync()
   },
   mounted() {
     // this.monitorSyncStatus()
@@ -76,7 +77,7 @@ export default {
     ...mapActions([
       'updateSettings',
       'manualWebDAVSync',
-      'setupWebDAVAutoSync'
+      // 'setupWebDAVAutoSync'
     ]),
     async initSync() {
       try {
@@ -243,16 +244,38 @@ export default {
         console.error('Failed to import bookmarks:', error)
       }
     },
-    importTags(event) {
+    async importTags(event) {
       try {
         const file = event.target.files[0]
         if (!file) return
-        // 导入标签的逻辑
-        console.log('Importing tags from file:', file.name)
-        // 重置文件输入，以便可以再次选择同一文件
+      
+
+        const content = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = e => resolve(e.target.result)
+          reader.onerror = e => reject(e)
+          reader.readAsText(file)
+        })
+      
+        const data = JSON.parse(content)
+      
+        // 检查是否为数组
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid format: Expected an array of tags')
+        }
+        
+
+        this.$store.dispatch('tags/importTags', data);
+
+        // 重置文件输入
         event.target.value = ''
       } catch (error) {
         console.error('Failed to import tags:', error)
+        this.$notify({
+          title: 'Import Failed',
+          message: error.message || 'Failed to import tags',
+          type: 'error'
+        })
       }
     },
     validateBookmarks() {

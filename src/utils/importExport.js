@@ -25,12 +25,22 @@ export function importBookmarks(store, file) {
           // 标准格式 - 包含bookmarks和tags的对象
           // 导入标签
           if (rawData.tags && Array.isArray(rawData.tags)) {
+            const result = await store.dispatch('tags/importTags', rawData.tags);
+            tagsCount = result.length;
+            
+            // 检查是否有重复名称的标签
             const allTags = store.getters['tags/all'];
-            for (const tag of rawData.tags) {
-              if (!allTags.some(t => t.id === tag.id)) {
-                await store.dispatch('tags/addTag', tag);
-                tagsCount++;
-              }
+            const nameCounts = {};
+            allTags.forEach(tag => {
+              nameCounts[tag.name] = (nameCounts[tag.name] || 0) + 1;
+            });
+            
+            const duplicateNames = Object.entries(nameCounts)
+              .filter(([name, count]) => count > 1)
+              .map(([name]) => name);
+              
+            if (duplicateNames.length > 0) {
+              warnings.push(`发现重复标签名称: ${duplicateNames.join(', ')}`);
             }
           }
           

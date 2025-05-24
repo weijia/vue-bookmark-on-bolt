@@ -229,7 +229,7 @@ const actions = {
 
       for (const tagData of tags) {
         // 使用现有ID或生成新的UUID
-        const uuid = tagData.id || crypto.randomUUID();
+        const uuid = tagData.id?escapeId(tagData.id):crypto.randomUUID();
         
         // 处理时间戳 - 支持Unix时间戳（数字）或ISO字符串
         const createdAt = tagData.createdAt 
