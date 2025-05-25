@@ -240,6 +240,15 @@ const mutations = {
   
   setTags(state, tags) {
     state.tags = tags;
+    // 同步到chrome.storage.local
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        chrome.storage.local.set({ tags: state.tags });
+      } catch (error) {
+        console.error('Error syncing to chrome.storage.local:', error);
+      }
+    }
+    console.log('setTags: ', tags);
   },
   
   addTag(state, tag) {

@@ -203,8 +203,11 @@ function showBookmarkForm(existingBookmark = null) {
     descriptionInput.value = existingBookmark.description || '';
     
     // 填充标签
-    if (existingBookmark.tags && Array.isArray(existingBookmark.tags)) {
-      selectedTags = [...existingBookmark.tags];
+    if (existingBookmark.tagIds && Array.isArray(existingBookmark.tagIds)) {
+      // 从availableTags中找到对应的完整tag对象
+      selectedTags = existingBookmark.tagIds
+        .map(tagId => availableTags.find(tag => tag.id === tagId))
+        .filter(tag => tag); // 过滤掉未找到的tag
       renderTags();
     }
     
@@ -261,8 +264,11 @@ function checkExistingBookmark() {
       descriptionInput.value = existingBookmark.description || '';
       
       // 填充标签
-      if (existingBookmark.tags && Array.isArray(existingBookmark.tags)) {
-        selectedTags = [...existingBookmark.tags];
+      if (existingBookmark.tagIds && Array.isArray(existingBookmark.tagIds)) {
+        // 从availableTags中找到对应的完整tag对象
+        selectedTags = existingBookmark.tagIds
+          .map(tagId => availableTags.find(tag => tag.id === tagId))
+          .filter(tag => tag); // 过滤掉未找到的tag
         renderTags();
       }
     }
@@ -287,13 +293,23 @@ function handleTagInput(event) {
 // 渲染标签
 function renderTags() {
   tagContainer.innerHTML = '';
-  
+  // console.log('Rendering tags:', selectedTags);
+
   selectedTags.forEach((tag, index) => {
     const tagElement = document.createElement('div');
     tagElement.className = 'tag';
+    if (tag.color) {
+      tagElement.style.backgroundColor = tag.color;
+      // 根据背景色深浅自动调整文字颜色
+      const r = parseInt(tag.color.slice(1, 3), 16);
+      const g = parseInt(tag.color.slice(3, 5), 16);
+      const b = parseInt(tag.color.slice(5, 7), 16);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      tagElement.style.color = brightness > 128 ? '#000' : '#fff';
+    }
     
     const tagText = document.createElement('span');
-    tagText.textContent = tag;
+    tagText.textContent = tag.name;
     
     const removeButton = document.createElement('button');
     removeButton.textContent = '×';
@@ -324,7 +340,7 @@ function saveBookmark() {
     title,
     url,
     description,
-    tags: selectedTags, // 在popup中使用tags，在store中会转换为tagIds
+    tagIds: selectedTags.map(tag => tag.id), // 直接保存tagIds而不是完整的tag对象
     updatedAt: new Date().toISOString()
   };
   
