@@ -59,7 +59,7 @@ const getters = {
     });
   },
   
-  filteredBookmarks: (state) => {
+  filteredBookmarks: (state, getters, rootState, rootGetters) => {
     const bookmarks = state.bookmarks || [];
     const searchQuery = state.searchQuery;
     const selectedTags = state.selectedTags;
@@ -69,15 +69,25 @@ const getters = {
     }
     
     return bookmarks.filter(bookmark => {
+      // 检查书签的基本属性是否匹配搜索查询
       const matchesQuery = !searchQuery || 
         bookmark.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         bookmark.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (bookmark.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // 检查书签的标签是否匹配搜索查询
+      const matchesTagNames = !searchQuery || !bookmark.tagIds || bookmark.tagIds.length === 0 ? false :
+        bookmark.tagIds.some(tagId => {
+          const tag = rootGetters['tags/tagById'](tagId);
+          return tag && tag.name && tag.name.toLowerCase().includes(searchQuery.toLowerCase());
+        });
         
+      // 检查是否匹配选定的标签过滤器
       const matchesTags = !selectedTags || selectedTags.length === 0 || 
         selectedTags.some(tagId => bookmark.tagIds?bookmark.tagIds.includes(tagId):false);
       
-      return matchesQuery && matchesTags;
+      // 如果匹配基本属性或标签名称，并且匹配标签过滤器，则返回true
+      return (matchesQuery || matchesTagNames) && matchesTags;
     });
   }
 };

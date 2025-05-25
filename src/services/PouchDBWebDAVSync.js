@@ -135,11 +135,13 @@ export default class PouchDBWebDAVSync {
   async fullSync() {
     try {
       await this.syncFromWebDAV('tag.json', this.pouchDbTideMarkSync.importTags.bind(this.pouchDbTideMarkSync));
-      // await this.syncToWebDAV('tag.json', this.pouchDbTideMarkSync.convertToWebDAVFormat.bind(this.pouchDbTideMarkSync), 
-        // this.pouchDbTideMarkSync.getAllTags.bind(this.pouchDbTideMarkSync));
+      await this.syncFromWebDAV('my-tag.json', this.pouchDbTideMarkSync.importTags.bind(this.pouchDbTideMarkSync));
+      await this.syncToWebDAV('my-tag.json', this.pouchDbTideMarkSync.convertToWebDAVFormat.bind(this.pouchDbTideMarkSync), 
+        this.pouchDbTideMarkSync.getAllTags.bind(this.pouchDbTideMarkSync));
       await this.syncFromWebDAV('collection.json', this.pouchDbTideMarkSync.importBookmarks.bind(this.pouchDbTideMarkSync));
-      // await this.syncToWebDAV('collection.json', this.pouchDbTideMarkSync.convertToWebDAVFormat.bind(this.pouchDbTideMarkSync), 
-        // this.pouchDbTideMarkSync.getAllBookmarks.bind(this.pouchDbTideMarkSync));
+      await this.syncFromWebDAV('my-collection.json', this.pouchDbTideMarkSync.importBookmarks.bind(this.pouchDbTideMarkSync));
+      await this.syncToWebDAV('my-collection.json', this.pouchDbTideMarkSync.convertToWebDAVFormat.bind(this.pouchDbTideMarkSync), 
+        this.pouchDbTideMarkSync.getAllBookmarks.bind(this.pouchDbTideMarkSync));
       return true;
     } catch (error) {
       console.error('Error during full sync:', error);
