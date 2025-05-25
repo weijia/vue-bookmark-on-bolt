@@ -1,21 +1,6 @@
 import StorageService from './StorageService'
 import { escapeId, unescapeId } from '../utils/idEscape';
 
-
-function escapeDocId(doc) {
-    if (doc._id) {
-      doc._id = escapeId(doc._id);
-    }
-    return doc;
-  }
-  
-function unescapeDocId(doc) {
-if (doc._id) {
-    doc._id = unescapeId(doc._id);
-}
-return doc;
-}
-
   // 字段名映射配置
 const FIELD_MAPPING = {
     pouchToWebDAV: {
@@ -33,6 +18,19 @@ export default class PouchDbTideMarkSync {
     this.tagsDB = null;
   }
 
+  escapeDocId(doc) {
+    if (doc.id) {
+      doc._id = escapeId(doc.id);
+    }
+    return doc;
+  }
+
+  unescapeDocId(doc) {
+  if (doc._id) {
+      doc.id = unescapeId(doc._id);
+    }
+    return doc;
+  }
   // 将PouchDB文档转换为WebDAV格式
   convertToWebDAVFormat(pouchDoc) {
     const webDAVDoc = {};
@@ -44,7 +42,7 @@ export default class PouchDbTideMarkSync {
         webDAVDoc[key] = pouchDoc[key];
       }
     }
-    return unescapeDocId(webDAVDoc);
+    return this.unescapeDocId(webDAVDoc);
   }
 
   // 将WebDAV文档转换为PouchDB格式
@@ -58,8 +56,8 @@ export default class PouchDbTideMarkSync {
         pouchDoc[key] = webDAVDoc[key];
       }
     }
-    pouchDoc['_id'] = webDAVDoc.id;
-    return escapeDocId(pouchDoc);
+    // pouchDoc['_id'] = webDAVDoc.id;
+    return this.escapeDocId(pouchDoc);
   }
 
   async importBookmarks(webDavData) {

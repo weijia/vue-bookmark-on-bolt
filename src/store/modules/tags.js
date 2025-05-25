@@ -1,5 +1,6 @@
-import { tagsDB, syncDataToWebDAV } from '../../services/storage';
 import { escapeId } from '../../utils/idEscape';
+import StorageService from '../../services/StorageService';
+import { tagsDB } from '../../services/storage';
 
 const state = {
   tags: [],
@@ -116,30 +117,6 @@ const actions = {
     }
   },
 
-  async syncToWebDAV({ state, rootState }) {
-    try {
-      // 获取所有标签，移除PouchDB特定字段
-      const tags = state.tags.map(tag => {
-        const { _id, _rev, ...cleanTag } = tag;
-        return cleanTag;
-      });
-
-      // 获取所有书签
-      const bookmarks = rootState.bookmarks.bookmarks.map(bookmark => {
-        const { _id, _rev, ...cleanBookmark } = bookmark;
-        return cleanBookmark;
-      });
-
-      // 同步到WebDAV
-      await syncDataToWebDAV(bookmarks, tags);
-      
-      return true;
-    } catch (error) {
-      console.error('Failed to sync tags to WebDAV:', error);
-      throw error;
-    }
-  },
-
   async loadTags({ commit }) {
     try {
       commit('setLoading', true);
@@ -228,63 +205,21 @@ const actions = {
   async importTags({ commit, state, dispatch }, tags) {
     try {
       commit('setLoading', true);
-      const importedTags = [];
-      const processedFields = ['_id', 'id', 'name', 'color', 'createdAt', 'updatedAt'];
+      let importedCount = 0;
+      const errors = [];
 
-      for (const tagData of tags) {
-        // 使用现有ID或生成新的UUID
-        const uuid = tagData.id?escapeId(tagData.id):crypto.randomUUID();
-        
-        // 处理时间戳 - 支持Unix时间戳（数字）或ISO字符串
-        const createdAt = tagData.createdAt 
-          ? (typeof tagData.createdAt === 'number' 
-              ? tagData.createdAt 
-              : Math.floor(new Date(tagData.createdAt).getTime() / 1000))
-          : Math.floor(Date.now() / 1000);
-          
-        const updatedAt = tagData.updatedAt
-          ? (typeof tagData.updatedAt === 'number'
-              ? tagData.updatedAt
-              : Math.floor(new Date(tagData.updatedAt).getTime() / 1000))
-          : Math.floor(Date.now() / 1000);
+      let storageService = new StorageService();
+      let result = await storageService.importTags(tags);
 
-        // 创建基本标签对象
-        const tag = {
-          _id: uuid,
-          id: uuid,
-          name: tagData.name,
-          color: tagData.color || '#3b82f6',
-          createdAt: createdAt,
-          updatedAt: updatedAt
-        };
+      console.log('Import result:', result);
+      importedCount = result.length;
+      if(result.errors) errors.push(...result.errors);
 
-        // 动态添加其他字段
-        Object.keys(tagData).forEach(key => {
-          if (!processedFields.includes(key)) {
-            tag[key] = tagData[key];
-          }
-        });
+      let allTags = await storageService.getAllTags();
+      commit('setTags', allTags);
 
-        // 检查标签是否已存在
-        const existingTag = state.tags.find(t => t.id === uuid);
-        if (existingTag) {
-          // 更新现有标签
-          await tagsDB.put({
-            ...existingTag,
-            ...tag,
-            updatedAt: Math.floor(Date.now() / 1000)
-          });
-          commit('updateTag', { id: uuid, updatedTag: tag });
-        } else {
-          // 添加新标签
-          await tagsDB.put(tag);
-          commit('addTag', tag);
-        }
-        
-        importedTags.push(tag);
-      }
-
-      return importedTags;
+      console.log({ importedCount, errors });
+      return { importedCount, errors };
     } catch (error) {
       commit('setError', error.message);
       throw error;

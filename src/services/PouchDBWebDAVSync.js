@@ -105,7 +105,7 @@ export default class PouchDBWebDAVSync {
       const webDAVData = await this.webDAVManager.load(filename);
       // console.log('webDAVData: ', webDAVData);
 
-      let result = importFunc(webDAVData, importFunc);
+      let result = await importFunc(webDAVData, importFunc);
 
       console.log(`Saved ${result.length} items to PouchDB`);
 
@@ -119,7 +119,7 @@ export default class PouchDBWebDAVSync {
 
       return true;
     } catch (error) {
-      console.error('Error syncing from WebDAV:', error);
+      console.warn('Error syncing from WebDAV, possiblely CORS issue:', error);
       this.#notifyListeners({ 
         type: 'syncError', 
         direction: 'fromWebDAV',
@@ -134,10 +134,12 @@ export default class PouchDBWebDAVSync {
   双向同步
   async fullSync() {
     try {
-      await this.syncFromWebDAV('tag.json', this.pouchDbTideMarkSync.importTags);
-      await this.syncToWebDAV('tag.json', this.pouchDbTideMarkSync.getAllTags);
-      await this.syncFromWebDAV('collection.json', this.pouchDbTideMarkSync.importBookmarks);
-      await this.syncToWebDAV('collection.json', this.pouchDbTideMarkSync.getAllBookmarks);
+      await this.syncFromWebDAV('tag.json', this.pouchDbTideMarkSync.importTags.bind(this.pouchDbTideMarkSync));
+      // await this.syncToWebDAV('tag.json', this.pouchDbTideMarkSync.convertToWebDAVFormat.bind(this.pouchDbTideMarkSync), 
+        // this.pouchDbTideMarkSync.getAllTags.bind(this.pouchDbTideMarkSync));
+      await this.syncFromWebDAV('collection.json', this.pouchDbTideMarkSync.importBookmarks.bind(this.pouchDbTideMarkSync));
+      // await this.syncToWebDAV('collection.json', this.pouchDbTideMarkSync.convertToWebDAVFormat.bind(this.pouchDbTideMarkSync), 
+        // this.pouchDbTideMarkSync.getAllBookmarks.bind(this.pouchDbTideMarkSync));
       return true;
     } catch (error) {
       console.error('Error during full sync:', error);

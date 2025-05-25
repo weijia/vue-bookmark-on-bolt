@@ -426,39 +426,158 @@ export default class StorageService {
     return this.importData(this.tagsDB, data);
   }
 
+  /**
+   * 导入数据到PouchDB，检查并处理数据冲突
+   * @param {PouchDB} pouchDb - 目标PouchDB实例
+   * @param {Array} data - 要导入的数据数组
+   * @returns {Object} 包含导入结果和冲突信息的对象
+   */
   async importData(pouchDb, data) {
     try {
-      // 3. 获取当前PouchDB数据用于冲突检测
+      // 获取当前PouchDB数据用于冲突检测
       const currentData = await this.#getAllFromPouchDB(pouchDb);
-      // console.log('currentData: ', currentData);
       const currentMap = new Map(currentData.map(doc => [doc.id, doc]));
 
-      // 4. 合并数据
-      const docsToSave = data.map(remoteDoc => {
+      // 分离有冲突、完全相同和需要更新的数据
+      const conflicts = [];
+      const docsToSave = [];
+      const skippedDocs = [];
+
+      for (const remoteDoc of data) {
         const localDoc = currentMap.get(remoteDoc.id);
         
-        // 冲突解决策略：保留最新修改的文档
         if (localDoc) {
-          const remoteModified = remoteDoc.updatedAt ? parseInt(remoteDoc.updatedAt) : 0;
-          const localModified = parseInt(localDoc.updatedAt);
-          
-          if (localModified > remoteModified) {
-            return localDoc; // 保留本地版本
+
+          // 检查文档是否完全相同
+          if (this.#areDocsIdentical(localDoc, remoteDoc)) {
+            skippedDocs.push({
+              id: remoteDoc.id,
+              reason: 'Document is identical to local version'
+            });
+            continue; // 跳过完全相同的文档
           }
+          
+          // 检查是否存在冲突
+          const hasConflict = this.#checkConflict(localDoc, remoteDoc);
+          
+          if (hasConflict) {
+            conflicts.push({
+              remote: remoteDoc,
+              local: localDoc,
+              reason: 'Data conflict detected'
+            });
+            continue; // 跳过有冲突的数据
+          }
+          
         }
-        // console.log('remoteDoc: ', remoteDoc);
-        return remoteDoc;
-      });
+        
+        // 无冲突且不完全相同的数据添加到待保存列表
+        docsToSave.push(remoteDoc);
+      }
 
-      // console.log('syncFromWebDAV: ', docsToSave)
+      // 只保存需要更新的数据
+      let saveResult = [];
+      if (docsToSave.length > 0) {
+        saveResult = await this.#saveToPouchDB(pouchDb, docsToSave);
+      }
 
-      // 4. 保存到PouchDB
-      return await this.#saveToPouchDB(pouchDb, docsToSave);
-      // console.log(`Saved ${result.length} items to PouchDB`);
+      // 返回导入结果，包括成功导入的数量和冲突信息
+      return {
+        success: true,
+        savedCount: docsToSave.length,
+        conflicts: conflicts,
+        skipped: skippedDocs,
+        saveResult: saveResult
+      };
     }
     catch (error) {
       console.error('Error importing data:', error);
-      throw error; 
+      return {
+        success: false,
+        error: error.message,
+        conflicts: [],
+        skipped: []
+      };
     }
+  }
+
+  /**
+   * 检查两个文档是否完全相同
+   * @param {Object} doc1 - 第一个文档
+   * @param {Object} doc2 - 第二个文档
+   * @returns {boolean} 如果文档完全相同则返回true
+   */
+  #areDocsIdentical(doc1, doc2) {
+    // 忽略PouchDB内部字段和修订版本
+    const ignoreFields = ['_rev'];
+    
+    // 获取所有字段名（除了忽略字段）
+    const allFields = new Set([
+      ...Object.keys(doc1),
+      ...Object.keys(doc2)
+    ].filter(field => !ignoreFields.includes(field)));
+
+    // 比较每个字段的值
+    for (const field of allFields) {
+      const value1 = doc1[field];
+      const value2 = doc2[field];
+
+      // 如果字段只存在于其中一个文档中
+      if ((!value1 && value2) || (value1 && !value2)) {
+        return false;
+      }
+
+      // 比较字段值（使用JSON.stringify处理对象和数组）
+      if (JSON.stringify(value1) !== JSON.stringify(value2)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * 检查两个文档之间是否存在冲突
+   * @param {Object} localDoc - 本地文档
+   * @param {Object} remoteDoc - 远程文档
+   * @returns {boolean} 是否存在冲突
+   */
+  #checkConflict(localDoc, remoteDoc) {
+    // 如果本地文档比远程文档新，视为冲突
+    if (localDoc.updatedAt && remoteDoc.updatedAt) {
+      const localModified = parseInt(localDoc.updatedAt);
+      const remoteModified = parseInt(remoteDoc.updatedAt);
+      if (localModified > remoteModified) {
+        return true;
+      }
+    }
+
+    // 如果时间戳相同，比较所有字段（除了特殊字段）
+    if (localDoc.updatedAt === remoteDoc.updatedAt) {
+      // 获取所有字段名（除了特殊字段）
+      const specialFields = ['_id', '_rev', 'id', 'updatedAt', 'createdAt'];
+      const allFields = new Set([
+        ...Object.keys(localDoc),
+        ...Object.keys(remoteDoc)
+      ].filter(field => !specialFields.includes(field)));
+
+      // 比较每个字段的值
+      for (const field of allFields) {
+        const localValue = localDoc[field];
+        const remoteValue = remoteDoc[field];
+
+        // 如果字段只存在于其中一个文档中
+        if ((!localValue && remoteValue) || (localValue && !remoteValue)) {
+          return true;
+        }
+
+        // 比较字段值（使用JSON.stringify处理对象和数组）
+        if (JSON.stringify(localValue) !== JSON.stringify(remoteValue)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 }

@@ -68,9 +68,14 @@ export default {
     sortedTags() {
       return [...this.allTags]
         .sort((a, b) => {
+          // 首先检查计数
           if (b.count !== a.count) {
             return b.count - a.count
           }
+          // 检查name属性是否存在并且不为null/undefined
+          if (!a.name && !b.name) return 0
+          if (!a.name) return 1
+          if (!b.name) return -1
           return a.name.localeCompare(b.name)
         })
     },

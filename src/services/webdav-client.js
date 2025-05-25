@@ -61,7 +61,7 @@ class WebDAVClient {
         return text;
       }
     } catch (error) {
-      console.error('WebDAV request failed:', error);
+      console.warn('WebDAV request failed:', error);
       throw error;
     }
   }

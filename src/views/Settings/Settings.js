@@ -287,9 +287,9 @@ export default {
         if (!Array.isArray(data)) {
           throw new Error('Invalid format: Expected an array of tags')
         }
-        
 
-        this.$store.dispatch('tags/importTags', data);
+        let pouchDbTideMarkSync = new PouchDbTideMarkSync();
+        this.$store.dispatch('tags/importTags', data.map(doc => pouchDbTideMarkSync.escapeDocId(doc)));
 
         // 重置文件输入
         event.target.value = ''

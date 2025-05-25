@@ -65,7 +65,7 @@ export async function syncAllBookmarksFromChromeStorage(store) {
       console.log('Bulk syncing bookmarks from chrome.storage.local to IndexedDB');
       
       // 批量添加/更新书签
-      await store.dispatch('bookmarks/bulkUpdateBookmarks', bookmarks);
+      // await store.dispatch('bookmarks/bulkUpdateBookmarks', bookmarks);
       
       console.log('Bulk sync completed');
     }
@@ -75,15 +75,10 @@ export async function syncAllBookmarksFromChromeStorage(store) {
   }
 }
 
-// 从chrome.storage.local同步书签到IndexedDB (旧版，已弃用)
-export async function syncBookmarksFromChromeStorage(store) {
-  console.warn('syncBookmarksFromChromeStorage is deprecated, use syncAllBookmarksFromChromeStorage instead');
-  return syncAllBookmarksFromChromeStorage(store);
-}
 
 // 初始化浏览器扩展消息监听
 export function initExtensionMessageListener(store) {
-  const debouncedSync = debounce(() => syncBookmarksFromChromeStorage(store), 1000);
+  const debouncedSync = debounce(() => syncAllBookmarksFromChromeStorage(store), 1000);
   let isInitialSync = true;
   
   chrome.runtime.onMessage.addListener((message) => {

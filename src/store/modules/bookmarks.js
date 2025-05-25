@@ -1,7 +1,6 @@
-import { bookmarksDB, syncDataToWebDAV } from '../../services/storage';
+import { bookmarksDB } from '../../services/storage';
 import { checkUrlValidity } from '../../utils/urlValidator';
 import { escapeId } from '../../utils/idEscape';
-import PouchDbTideMarkSync from '../../services/PouchDbTideMarkSync';
 import StorageService from '../../services/StorageService';
 
 const state = {
@@ -76,7 +75,7 @@ const getters = {
         bookmark.description.toLowerCase().includes(searchQuery.toLowerCase());
         
       const matchesTags = !selectedTags || selectedTags.length === 0 || 
-        selectedTags.some(tagId => bookmark.tagIds.includes(tagId));
+        selectedTags.some(tagId => bookmark.tagIds?bookmark.tagIds.includes(tagId):false);
       
       return matchesQuery && matchesTags;
     });
