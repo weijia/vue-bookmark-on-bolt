@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 检查当前页面是否已收藏
       chrome.storage.local.get(['bookmarks'], (result) => {
         const bookmarks = result.bookmarks || [];
-        const existingBookmark = bookmarks.find(b => b.url === currentTab.url);
+        const existingBookmark = findMatchingBookmark(currentTab.url, bookmarks);
         
         if (existingBookmark) {
           // 如果已收藏，直接显示编辑表单
@@ -249,13 +249,47 @@ function resetForm() {
   hideStatus();
 }
 
+// 提取域名和检查URL是否只有域名部分的辅助函数
+function extractUrlParts(url) {
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname.toLowerCase();
+    // 检查URL是否只有域名部分（路径为"/"或为空）
+    const hasOnlyDomain = (urlObj.pathname === "/" || urlObj.pathname === "") && !urlObj.search && !urlObj.hash;
+    return { domain, hasOnlyDomain };
+  } catch (e) {
+    return { domain: url.toLowerCase(), hasOnlyDomain: false };
+  }
+}
+
+// 查找匹配的书签
+function findMatchingBookmark(url, bookmarks) {
+  if (!url) return null;
+  
+  // 首先检查完全匹配
+  const exactMatch = bookmarks.find(b => b.url === url);
+  if (exactMatch) return exactMatch;
+  
+  // 如果没有完全匹配，检查域名是否匹配，但只有当书签URL没有路径部分时才算匹配
+  const currentParts = extractUrlParts(url);
+  
+  return bookmarks.find(bookmark => {
+    if (!bookmark.url) return false;
+    
+    const bookmarkParts = extractUrlParts(bookmark.url);
+    
+    // 只有当书签URL只包含域名部分（没有路径）时，才进行域名匹配
+    return bookmarkParts.hasOnlyDomain && bookmarkParts.domain === currentParts.domain;
+  });
+}
+
 // 检查是否已经存在此书签
 function checkExistingBookmark() {
   if (!currentTab || !currentTab.url) return;
   
   chrome.storage.local.get(['bookmarks'], (result) => {
     const bookmarks = result.bookmarks || [];
-    const existingBookmark = bookmarks.find(b => b.url === currentTab.url);
+    const existingBookmark = findMatchingBookmark(currentTab.url, bookmarks);
     
     if (existingBookmark) {
       // 填充现有书签信息

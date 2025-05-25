@@ -28,11 +28,35 @@ async function updateIconState(currentUrl) {
                       !currentUrl.startsWith('chrome://') &&
                       !currentUrl.startsWith('edge://');
 
+    // 提取域名和检查URL是否只有域名部分的辅助函数
+    function extractUrlParts(url) {
+      try {
+        const urlObj = new URL(url);
+        const domain = urlObj.hostname.toLowerCase();
+        // 检查URL是否只有域名部分（路径为"/"或为空）
+        const hasOnlyDomain = (urlObj.pathname === "/" || urlObj.pathname === "") && !urlObj.search && !urlObj.hash;
+        return { domain, hasOnlyDomain };
+      } catch (e) {
+        return { domain: url.toLowerCase(), hasOnlyDomain: false };
+      }
+    }
+
     // 检查当前URL是否在书签列表中
-    const isBookmarked = isValidUrl && 
-                        bookmarks.some(bookmark => 
-                          bookmark.url && bookmark.url.toLowerCase() === currentUrl.toLowerCase()
-                        );
+    const isBookmarked = isValidUrl && bookmarks.some(bookmark => {
+      if (!bookmark.url) return false;
+      
+      // 首先检查完全匹配
+      if (bookmark.url.toLowerCase() === currentUrl.toLowerCase()) {
+        return true;
+      }
+      
+      // 如果没有完全匹配，检查域名是否匹配，但只有当书签URL没有路径部分时才算匹配
+      const bookmarkParts = extractUrlParts(bookmark.url);
+      const currentParts = extractUrlParts(currentUrl);
+      
+      // 只有当书签URL只包含域名部分（没有路径）时，才进行域名匹配
+      return bookmarkParts.hasOnlyDomain && bookmarkParts.domain === currentParts.domain;
+    });
 
     // 设置徽章标记
     if (isValidUrl && isBookmarked) {
