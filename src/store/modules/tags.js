@@ -27,6 +27,33 @@ const getters = {
   tagById: state => id => {
     // const escapedId = escapeId(id)
     return state.tags.find(tag => tag.id === id);
+  },
+  tagsInFilteredBookmarks: (state, getters, rootState, rootGetters) => {
+    // 获取当前过滤出的书签
+    const filteredBookmarks = rootGetters['bookmarks/filteredBookmarks'];
+    
+    // 如果没有过滤出书签，返回所有标签
+    if (!filteredBookmarks || filteredBookmarks.length === 0) {
+      return getters.allTags;
+    }
+    
+    // 从过滤出的书签中提取所有唯一的标签ID
+    const tagCounts = {};
+    filteredBookmarks.forEach(bookmark => {
+      if (bookmark.tagIds && Array.isArray(bookmark.tagIds)) {
+        bookmark.tagIds.forEach(tagId => {
+          tagCounts[tagId] = (tagCounts[tagId] || 0) + 1;
+        });
+      }
+    });
+    
+    // 返回这些标签的详细信息
+    return state.tags
+      .filter(tag => tagCounts[tag.id])
+      .map(tag => ({
+        ...tag,
+        count: tagCounts[tag.id] || 0
+      }));
   }
 };
 

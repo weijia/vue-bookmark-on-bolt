@@ -63,10 +63,11 @@ export default {
   },
   computed: {
     ...mapGetters({
-      allTags: 'tags/allTags'
+      allTags: 'tags/allTags',
+      tagsInFilteredBookmarks: 'tags/tagsInFilteredBookmarks'
     }),
     sortedTags() {
-      return [...this.allTags]
+      return [...this.tagsInFilteredBookmarks]
         .sort((a, b) => {
           // 首先检查计数
           if (b.count !== a.count) {
