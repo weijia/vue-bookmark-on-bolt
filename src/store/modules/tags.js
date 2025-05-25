@@ -25,8 +25,8 @@ const getters = {
     }))
   },
   tagById: state => id => {
-    const escapedId = escapeId(id)
-    return state.tags.find(tag => tag.id === escapedId);
+    // const escapedId = escapeId(id)
+    return state.tags.find(tag => tag.id === id);
   }
 };
 

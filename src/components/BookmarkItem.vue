@@ -185,7 +185,11 @@ export default {
     
     getTagColor(tagId) {
       const tag = this.tagById(tagId)
-      return tag ? tag.color : '#cccccc'
+      let color = tag ? (tag.color ? tag.color :'#3b82f6') : '#3b82f6'
+      // console.log(tag, color);
+      return color
+      // return tag ? tag.color : '#3b82f6'
+      // return tag ? tag.color : '#cccccc'
     },
     
     onFaviconError(e) {
