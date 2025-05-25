@@ -371,14 +371,7 @@ const actions = {
       console.log('Import result:', result);
       importedCount = result.updated + result.added;
       if(result.errors) errors.push(...result.errors);
-      // 同步到chrome.storage.local
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        try {
-          chrome.storage.local.set({ bookmarks: state.bookmarks });
-        } catch (error) {
-          console.error('Error syncing to chrome.storage.local:', error);
-        }
-      }
+
       let allBookmarks = await storageService.getAllBookmarks();
       commit('setBookmarks', allBookmarks);
       
@@ -404,6 +397,14 @@ const mutations = {
   
   setBookmarks(state, bookmarks) {
     state.bookmarks = bookmarks || [];
+    // 同步到chrome.storage.local
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        chrome.storage.local.set({ bookmarks: state.bookmarks });
+      } catch (error) {
+        console.error('Error syncing to chrome.storage.local:', error);
+      }
+    }
   },
   
   addBookmark(state, bookmark) {
