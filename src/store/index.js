@@ -17,7 +17,7 @@ const store = new Vuex.Store({
   }
 })
 
-// 初始化WebDAV同步
+// Initialize WebDAV sync
 const initWebDAVSync = async () => {
   try {
     const webdavConfig = localStorage.getItem('webdavConfig')

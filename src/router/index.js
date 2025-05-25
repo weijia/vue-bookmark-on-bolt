@@ -25,7 +25,7 @@ const routes = [
   }
 ]
 
-// 在浏览器扩展中，始终使用 hash 模式
+// Always use hash mode in browser extension
 const router = new VueRouter({
   mode: 'hash',
   routes

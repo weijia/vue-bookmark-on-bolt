@@ -35,7 +35,7 @@ const remoteStorage = new RemoteStorage({
             favicon: { type: 'string' },
             tagIds: { type: 'array', items: { type: 'string' } },
             createdAt: { type: 'string' },
-            lastVisited: {"type": ["string", "null"]}, // 这里允许 'title' 字段为 string 或 null
+            lastVisited: {"type": ["string", "null"]}, // Allow 'title' field to be string or null
             isValid: { type: 'boolean' },
             visitCount: { type: 'number' }
           }
@@ -64,13 +64,13 @@ const remoteStorage = new RemoteStorage({
             },
             async list() {
               try {
-                // 尝试获取所有书签
+                // Try to get all bookmarks
                 const bookmarks = await privateClient.getAll('');
                 return Object.values(bookmarks);
               } catch (error) {
-                // 捕获异常并打印错误信息
+                // Catch exception and print error message
                 console.error('Error fetching bookmarks from RemoteStorage:', error);
-                // 返回空数组
+                // Return empty array
                 return [];
               }
             }
@@ -109,7 +109,7 @@ const remoteStorage = new RemoteStorage({
   ]
 });
 
-// 声明访问权限
+// Declare access permissions
 remoteStorage.access.claim('bookmarks', 'rw');
 remoteStorage.access.claim('tags', 'rw');
 
@@ -144,7 +144,7 @@ async function syncBookmarks() {
           console.log('Bookmark updated successfully:', remoteBookmark.id);
         } catch (error) {
           console.error('Error updating bookmark:', remoteBookmark.id, error);
-          // 可以在这里添加更多的错误处理逻辑，比如重试
+          // Can add more error handling logic here, like retry
         }
       }
     } else {
@@ -433,12 +433,12 @@ export async function syncFromWebDAV() {
   }
 }
 
-// 合并数据策略
+    // Data merging strategy
 async function mergeData(localItems, remoteItems, db) {
   const localMap = new Map(localItems.map(item => [item.doc.id, item.doc]));
   const remoteMap = new Map(remoteItems.map(item => [item.id, item]));
   
-  // 处理新增和更新的项目
+      // Process new and updated items
   for (const [id, remoteItem] of remoteMap) {
     // 确保ID不以下划线开头，如果是，则进行转义
     const processedId = id.startsWith('_') ? escapeId(id) : id;
@@ -523,7 +523,7 @@ async function mergeData(localItems, remoteItems, db) {
     }
   }
   
-  // 保留本地有但远程没有的项目
+      // Keep items that exist locally but not remotely
   for (const [id, localItem] of localMap) {
     if (!remoteMap.has(id)) {
       await db.put(localItem);
