@@ -13,7 +13,16 @@ class WebDAVClient {
   async request(method, path, data = null, headers = {}) {
     path = path.replace(/^\/+/g, '');
     console.log('WebDAV request:', method, path, this.baseURL);
-    const url = new URL(path, this.baseURL).href;
+    
+    // 为GET请求添加时间戳参数，防止浏览器缓存
+    let url;
+    if (method === 'GET') {
+      url = new URL(path, this.baseURL);
+      url.searchParams.append('_t', new Date().getTime());
+      url = url.href;
+    } else {
+      url = new URL(path, this.baseURL).href;
+    }
     console.log(`WebDAV ${method} request to: ${url}`);
 
     // 在浏览器扩展中使用的特殊配置
@@ -21,6 +30,12 @@ class WebDAVClient {
       method,
       headers: {
         'Authorization': this.auth,
+        // 添加缓存控制头信息，防止浏览器缓存
+        ...(method === 'GET' ? {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        } : {}),
         ...headers
       },
       // 这些选项对于浏览器扩展环境很重要

@@ -405,6 +405,7 @@ const mutations = {
         console.error('Error syncing to chrome.storage.local:', error);
       }
     }
+    console.log('setBookmarks: ', bookmarks);
   },
   
   addBookmark(state, bookmark) {
