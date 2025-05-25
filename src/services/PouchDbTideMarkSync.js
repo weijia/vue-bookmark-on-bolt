@@ -4,10 +4,12 @@ import { escapeId, unescapeId } from '../utils/idEscape';
   // 字段名映射配置
 const FIELD_MAPPING = {
     pouchToWebDAV: {
-      'title': 'name'
+      'title': 'name',
+      'favicon': 'icon'
     },
     webDAVToPouch: {
-      'name': 'title'
+      'name': 'title',
+      'icon': 'favicon'
     }
   };
   

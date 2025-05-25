@@ -110,9 +110,9 @@ const actions = {
         tagIds: bookmarkData.tagIds || [],
         folderId: bookmarkData.folderId || 'my', // 默认文件夹ID
         topUpTime: bookmarkData.topUpTime || 0, // 置顶时间
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastVisited: null,
+        createdAt: Date.now(),        // 创建时间（时间戳）
+        updatedAt: Date.now(),        // 更新时间（时间戳）
+        lastVisited: null,            // 从未访问（或设为 0）
         isValid: state.isForceValid ? true : await checkUrlValidity(bookmarkData.url),
         visitCount: 0
       };
