@@ -72,7 +72,7 @@ const getters = {
       const matchesQuery = !searchQuery || 
         bookmark.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         bookmark.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bookmark.description.toLowerCase().includes(searchQuery.toLowerCase());
+        (bookmark.description || '').toLowerCase().includes(searchQuery.toLowerCase());
         
       const matchesTags = !selectedTags || selectedTags.length === 0 || 
         selectedTags.some(tagId => bookmark.tagIds?bookmark.tagIds.includes(tagId):false);

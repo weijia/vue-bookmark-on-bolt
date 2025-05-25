@@ -59,16 +59,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 加载所有可用标签
 function loadAvailableTags() {
-  chrome.storage.local.get(['bookmarks'], (result) => {
-    const bookmarks = result.bookmarks || [];
-    // 收集所有已使用的标签
-    availableTags = new Set();
-    bookmarks.forEach(bookmark => {
-      if (bookmark.tags && Array.isArray(bookmark.tags)) {
-        bookmark.tags.forEach(tag => availableTags.add(tag));
-      }
-    });
-    availableTags = Array.from(availableTags);
+  chrome.storage.local.get(['tags'], (result) => {
+    const tags = result.tags || [];
+    // 使用store中的tags数据
+    availableTags = tags.map(tag => ({
+      id: tag.id,
+      name: tag.name,
+      color: tag.color,
+      count: tag.count || 0
+    }));
   });
 }
 
@@ -84,9 +83,26 @@ function handleTagSearch(event) {
   
   // 过滤匹配的标签
   const matchingTags = availableTags.filter(tag => 
-    tag.toLowerCase().includes(searchText) && 
-    !selectedTags.includes(tag)
+    tag.name.toLowerCase().includes(searchText) && 
+    !selectedTags.some(selectedTag => 
+      typeof selectedTag === 'string' 
+        ? selectedTag === tag.name 
+        : selectedTag.name === tag.name
+    )
   );
+  
+  // 按使用频率排序
+  matchingTags.sort((a, b) => {
+    // 首先按照是否以搜索文本开头排序
+    const aStartsWith = a.name.toLowerCase().startsWith(searchText);
+    const bStartsWith = b.name.toLowerCase().startsWith(searchText);
+    
+    if (aStartsWith && !bStartsWith) return -1;
+    if (!aStartsWith && bStartsWith) return 1;
+    
+    // 然后按使用频率排序
+    return (b.count || 0) - (a.count || 0);
+  });
   
   // 显示搜索结果
   showTagSearchResults(matchingTags);
@@ -107,13 +123,47 @@ function showTagSearchResults(tags) {
   tags.forEach(tag => {
     const tagElement = document.createElement('div');
     tagElement.className = 'tag-result';
-    tagElement.textContent = tag;
+    
+    // 创建颜色指示器
+    const colorIndicator = document.createElement('span');
+    colorIndicator.className = 'tag-color';
+    colorIndicator.style.backgroundColor = tag.color || '#ccc';
+    
+    // 创建标签名称元素
+    const nameElement = document.createElement('span');
+    nameElement.className = 'tag-name';
+    
+    // 高亮匹配的文本
+    const searchText = tagInput.value.trim().toLowerCase();
+    const tagName = tag.name;
+    const index = tagName.toLowerCase().indexOf(searchText);
+    
+    if (index >= 0) {
+      const before = tagName.substring(0, index);
+      const match = tagName.substring(index, index + searchText.length);
+      const after = tagName.substring(index + searchText.length);
+      nameElement.innerHTML = `${before}<strong>${match}</strong>${after}`;
+    } else {
+      nameElement.textContent = tagName;
+    }
+    
+    // 添加使用次数指示器
+    const countElement = document.createElement('span');
+    countElement.className = 'tag-count';
+    countElement.textContent = tag.count ? `(${tag.count})` : '';
+    
+    // 组装标签元素
+    tagElement.appendChild(colorIndicator);
+    tagElement.appendChild(nameElement);
+    tagElement.appendChild(countElement);
+    
     tagElement.addEventListener('click', () => {
       selectedTags.push(tag);
       renderTags();
       tagInput.value = '';
       hideTagSearchResults();
     });
+    
     resultsContainer.appendChild(tagElement);
   });
   

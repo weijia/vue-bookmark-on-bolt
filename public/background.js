@@ -80,28 +80,63 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.type === 'ADD_BOOKMARK') {
     const { bookmark } = request;
     
-    // 首先保存到chrome.storage.local
-    chrome.storage.local.get(['bookmarks'], (result) => {
+    // 获取书签和标签数据
+    chrome.storage.local.get(['bookmarks', 'tags'], (result) => {
       const bookmarks = result.bookmarks || [];
+      const tags = result.tags || [];
+      
+      // 处理标签
+      const processedTags = [];
+      const tagIds = [];
+      
+      // 处理每个标签字符串
+      if (bookmark.tags && Array.isArray(bookmark.tags)) {
+        bookmark.tags.forEach(tagName => {
+          // 查找现有标签
+          let tag = tags.find(t => t.name.toLowerCase() === tagName.toLowerCase());
+          
+          // 如果标签不存在，创建新标签
+          if (!tag) {
+            tag = {
+              id: crypto.randomUUID(), // 生成唯一ID
+              name: tagName,
+              color: '#' + Math.floor(Math.random()*16777215).toString(16), // 随机颜色
+              createdAt: new Date().toISOString()
+            };
+            tags.push(tag);
+            processedTags.push(tag);
+          }
+          
+          tagIds.push(tag.id);
+        });
+      }
+      
+      // 更新bookmark对象，将tags字符串数组替换为tagIds
+      const processedBookmark = {
+        ...bookmark,
+        tagIds: tagIds,
+        tags: undefined // 移除原始的tags字符串数组
+      };
       
       // 检查是否已存在相同ID的书签（更新）或相同URL的书签（新增）
-      const existingIndex = bookmark.id ? 
-        bookmarks.findIndex(b => b.id === bookmark.id) :
-        bookmarks.findIndex(b => b.url === bookmark.url);
+      const existingIndex = processedBookmark.id ? 
+        bookmarks.findIndex(b => b.id === processedBookmark.id) :
+        bookmarks.findIndex(b => b.url === processedBookmark.url);
       
       if (existingIndex >= 0) {
         // 更新现有书签，保留原有的createdAt
         const originalCreatedAt = bookmarks[existingIndex].createdAt;
         bookmarks[existingIndex] = { 
-          ...bookmark,
-          createdAt: originalCreatedAt || bookmark.createdAt // 确保保留原始创建时间
+          ...processedBookmark,
+          createdAt: originalCreatedAt || processedBookmark.createdAt // 确保保留原始创建时间
         };
       } else {
         // 添加新书签
-        bookmarks.push(bookmark);
+        bookmarks.push(processedBookmark);
       }
       
-      chrome.storage.local.set({ bookmarks }, () => {
+      // 保存更新后的书签和标签
+      chrome.storage.local.set({ bookmarks, tags }, () => {
         // 更新图标状态
         updateIconStateForTab({ url: bookmark.url });
         
