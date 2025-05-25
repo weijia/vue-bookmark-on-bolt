@@ -64,7 +64,7 @@
         />
         <div class="tags-container">
           <div class="tags-selector" :key="'tags-selector-' + form.tagIds.join()">
-            <!-- 显示已有标签 -->
+            <!-- Show existing tags -->
             <div 
               v-for="tag in filteredTags" 
               :key="tag.id"
@@ -84,7 +84,7 @@
             </div>
           </div>
         </div>
-        <!-- 新增创建标签的输入框和按钮 -->
+        <!-- Add new tag input and button -->
         <div class="new-tag-input">
           <input 
             type="text" 
@@ -149,19 +149,19 @@ export default {
         url: '',
         description: '',
         tagIds: [],
-        folderId: 'my' // 默认文件夹ID
+        folderId: 'my' // Default folder ID
       },
       folders: [
-        { id: 'my', name: '我的收藏' },
-        { id: 'work', name: '工作' },
-        { id: 'study', name: '学习' },
-        { id: 'entertainment', name: '娱乐' }
+        { id: 'my', name: 'My Bookmarks' },
+        { id: 'work', name: 'Work' },
+        { id: 'study', name: 'Study' },
+        { id: 'entertainment', name: 'Entertainment' }
       ],
       loading: false,
       urlError: null,
-      newTagName: '', // 新增：新标签名称
-      newTagColor: '#000000', // 新增：新标签颜色
-      tagSearch: '' // 新增：标签搜索词
+      newTagName: '', // New tag name
+      newTagColor: '#000000', // New tag color
+      tagSearch: '' // Tag search term
     }
   },
   computed: {

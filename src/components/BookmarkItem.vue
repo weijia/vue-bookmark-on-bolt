@@ -126,10 +126,10 @@ export default {
       swipeOffset: 0,
       isSwiping: false,
       folders: [
-        { id: 'my', name: '我的收藏' },
-        { id: 'work', name: '工作' },
-        { id: 'study', name: '学习' },
-        { id: 'entertainment', name: '娱乐' }
+        { id: 'my', name: 'My Bookmarks' },
+        { id: 'work', name: 'Work' },
+        { id: 'study', name: 'Study' },
+        { id: 'entertainment', name: 'Entertainment' }
       ]
     }
   },
@@ -151,7 +151,7 @@ export default {
     },
     folderName() {
       const folder = this.folders.find(f => f.id === this.bookmark.folderId)
-      return folder ? folder.name : '我的收藏'
+      return folder ? folder.name : 'My Bookmarks'
     }
   },
   methods: {

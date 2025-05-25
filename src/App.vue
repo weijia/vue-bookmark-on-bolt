@@ -25,7 +25,7 @@ export default {
     return {
       isDarkMode: false,
       searchQuery: '',
-      syncStatus: 'idle', // 'idle'|'preparing'|'syncing'|'success'|'error'
+      syncStatus: 'idle', // Status values: 'idle'|'preparing'|'syncing'|'success'|'error'
       lastSyncTime: null,
       storageService: new StorageService()
     };
@@ -34,10 +34,10 @@ export default {
     syncStatusMessage() {
       const messages = {
         idle: '',
-        preparing: '正在准备同步...',
-        syncing: '同步中...',
-        success: `同步完成 ${this.lastSyncTime ? this.formatTime(this.lastSyncTime) : ''}`,
-        error: '同步失败，请检查网络连接'
+        preparing: 'Preparing to sync...',
+        syncing: 'Syncing...',
+        success: `Sync completed ${this.lastSyncTime ? this.formatTime(this.lastSyncTime) : ''}`,
+        error: 'Sync failed, please check network connection'
       };
       return messages[this.syncStatus];
     }
@@ -49,7 +49,7 @@ export default {
     };
   },
   created() {
-    // 从本地存储加载暗黑模式设置
+    // Load dark mode settings from local storage
     const savedMode = localStorage.getItem('darkMode');
     if (savedMode) {
       this.isDarkMode = JSON.parse(savedMode);
@@ -66,11 +66,11 @@ export default {
     // Start sync
     this.$store.dispatch('sync/startSync');
 
-    // 监听路由变化
+    // Watch for route changes
     this.$watch(
       () => this.$route.query,
       (newQuery) => {
-        // 如果路由中没有tag参数，则清空选中的tags
+        // If there's no tag parameter in the route, clear selected tags
         if (!newQuery.tag) {
           this.$store.commit('bookmarks/setSelectedTags', []);
         }
@@ -89,7 +89,7 @@ export default {
     },
     handleTagSearch(tagId) {
       const currentTags = this.$store.state.bookmarks.selectedTags;
-      // 如果点击的是已选中的tag，则取消选中
+      // If clicked tag is already selected, deselect it
       if (currentTags.includes(tagId)) {
         this.$store.commit('bookmarks/setSelectedTags', []);
         this.$router.replace({
@@ -99,7 +99,7 @@ export default {
           }
         });
       } else {
-        // 否则选中该tag
+        // Otherwise select this tag
         this.$store.commit('bookmarks/setSelectedTags', [tagId]);
         if (this.$route.query.tag !== tagId) {
           this.$router.replace({
@@ -118,32 +118,32 @@ export default {
       if (!date) return '';
       
       const now = new Date();
-      const diff = now - date; // 时间差（毫秒）
+      const diff = now - date; // Time difference (milliseconds)
       
-      // 如果时间差小于1分钟
+      // If time difference is less than 1 minute
       if (diff < 60000) {
-        return '刚刚';
+        return 'Just now';
       }
       
-      // 如果时间差小于1小时
+      // If time difference is less than 1 hour
       if (diff < 3600000) {
         const minutes = Math.floor(diff / 60000);
-        return `${minutes}分钟前`;
+        return `${minutes} minutes ago`;
       }
       
-      // 如果是今天
+      // If today
       if (date.toDateString() === now.toDateString()) {
-        return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        return `Today ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
       }
       
-      // 如果是昨天
+      // If yesterday
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       if (date.toDateString() === yesterday.toDateString()) {
-        return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        return `Yesterday ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
       }
       
-      // 其他情况显示完整日期
+      // Otherwise show full date
       return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     }
   }
@@ -187,7 +187,7 @@ export default {
   .main-content {
     height: auto;
     padding: 0;
-    padding-bottom: 60px; /* 为底部tab栏预留空间 */
+    padding-bottom: 60px; /* Space reserved for bottom tab bar */
   }
 }
 </style>

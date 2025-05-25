@@ -1,12 +1,12 @@
 <template>
   <div class="bookmark-manager">
-    <!-- 搜索栏 -->
+    <!-- Search bar -->
     <SearchBar 
       @search="handleSearch"
       class="search-bar-container"
     />
     
-    <!-- 书签头部 -->
+    <!-- Bookmark header -->
     <BookmarkHeader 
       :isCompactMode="isCompactMode"
       :sortBy="sortBy"
@@ -17,7 +17,7 @@
       @update:sortOrder="val => sortOrder = val"
     />
     
-    <!-- 无效书签提示 -->
+    <!-- Invalid bookmarks notice -->
     <InvalidNotice
       v-if="invalidCount > 0"
       :invalidCount="invalidCount"
@@ -25,7 +25,7 @@
       @toggle-invalid="$store.commit('bookmarks/setIsForceValid', !$store.state.bookmarks.isForceValid)"
     />
     
-    <!-- 书签列表 -->
+    <!-- Bookmark list -->
     <BookmarkList
       :bookmarks="sortedBookmarks"
       :loading="loading"
@@ -39,7 +39,7 @@
       @search-tag="handleTagSearch"
     />
     
-    <!-- 模态框组件 -->
+    <!-- Modal components -->
     <BookmarkModals
       :showAddForm="showAddForm"
       :showDeleteConfirm="showDeleteConfirm"
@@ -95,7 +95,7 @@ export default {
       filteredBookmarks: 'bookmarks/filteredBookmarks'
     }),
     sortedBookmarks() {
-      const bookmarks = [...(this.filteredBookmarks || [])]; // 创建新数组确保响应式
+      const bookmarks = [...(this.filteredBookmarks || [])]; // Create new array to ensure reactivity
       const order = this.sortOrder === 'asc' ? 1 : -1;
       
       const sorted = bookmarks.sort((a, b) => {
@@ -108,7 +108,7 @@ export default {
         return (dateA - dateB) * order;
       });
       
-      // 返回新数组确保响应式更新
+      // Return new array to ensure reactive updates
       return [...sorted];
     },
     ...mapState({
@@ -141,7 +141,7 @@ export default {
     editBookmark(bookmark) {
       this.currentBookmark = { 
         ...bookmark,
-        tagIds: bookmark.tagIds || [] // 确保tagIds存在
+        tagIds: bookmark.tagIds || [] // Ensure tagIds exists
       };
       this.isEditing = true;
       this.showAddForm = true;
@@ -172,7 +172,7 @@ export default {
     }
   },
   created() {
-    // 从本地存储加载视图模式设置
+    // Load view mode settings from local storage
     const savedViewMode = localStorage.getItem('bookmarkViewMode');
     if (savedViewMode) {
       this.isCompactMode = savedViewMode === 'compact';
