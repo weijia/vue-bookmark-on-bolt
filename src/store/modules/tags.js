@@ -235,18 +235,36 @@ const actions = {
       let importedCount = 0;
       const errors = [];
 
+      // 检查重复名称的tag
+      const uniqueTags = [];
+      tags.forEach(tag => {
+        const existingTag = state.tags.find(t => t.name === tag.name);
+        if (existingTag) {
+          errors.push({
+            tag,
+            reason: `Tag with name "${tag.name}" already exists`
+          });
+        } else {
+          uniqueTags.push(tag);
+        }
+      });
+
       let storageService = new StorageService();
-      let result = await storageService.importTags(tags);
+      let result = await storageService.importTags(uniqueTags);
 
       console.log('Import result:', result);
-      importedCount = result.length;
+      importedCount = result.savedCount || 0;
       if(result.errors) errors.push(...result.errors);
 
       let allTags = await storageService.getAllTags();
       commit('setTags', allTags);
 
       console.log({ importedCount, errors });
-      return { importedCount, errors };
+      return { 
+        importedCount, 
+        errors,
+        skippedCount: tags.length - uniqueTags.length
+      };
     } catch (error) {
       commit('setError', error.message);
       throw error;
