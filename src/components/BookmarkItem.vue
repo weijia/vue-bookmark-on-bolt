@@ -91,7 +91,7 @@
       </button>
       <button 
         class="swipe-btn delete-btn" 
-        @click="$emit('delete', bookmark.id)"
+        @click="$emit('delete', bookmark)"
       >
         🗑️
       </button>
@@ -159,8 +159,10 @@ export default {
       return extractDomain(url)
     },
     
-    formatDate(dateString) {
-      const date = new Date(dateString)
+    formatDate(dateInput) {
+      // 处理时间戳或ISO字符串
+      const date = typeof dateInput === 'number' ? 
+        new Date(dateInput*1000) : new Date(dateInput)
       const now = new Date()
       const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24))
       
@@ -278,12 +280,16 @@ export default {
 
 .bookmark-favicon {
   margin-right: var(--space-3);
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 .favicon-img {
   width: 24px;
   height: 24px;
   border-radius: 4px;
+  vertical-align: middle;
 }
 
 .bookmark-details {
@@ -369,11 +375,19 @@ export default {
   font-size: 1rem;
   padding: 4px;
   border-radius: 4px;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .action-btn:hover {
   background-color: var(--hover-color);
+}
+
+.action-btn.delete-btn {
+  color: var(--error-color);
+}
+
+.action-btn.delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* Mobile swipe actions */

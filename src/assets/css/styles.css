@@ -26,6 +26,10 @@
   --border-color: #e5e7eb;
   --hover-color: #f3f4f6;
   
+  /* Tag selection colors */
+  --selected-tag-bg: rgba(37, 99, 235, 0.15);
+  --selected-tag-border: rgba(37, 99, 235, 0.3);
+  
   /* Spacing system (8px base) */
   --space-1: 4px;
   --space-2: 8px;
@@ -42,6 +46,10 @@
   --primary-color: #3b82f6;
   --primary-light: #60a5fa;
   --primary-dark: #2563eb;
+  
+  /* Tag selection colors */
+  --selected-tag-bg: rgba(59, 130, 246, 0.2);
+  --selected-tag-border: rgba(59, 130, 246, 0.4);
   
   --text-primary: #f9fafb;
   --text-secondary: #e5e7eb;
@@ -125,6 +133,20 @@ button, .btn {
 
 .btn-outline:hover {
   background-color: var(--hover-color);
+}
+
+.btn-danger {
+  background-color: var(--error-color);
+  color: white;
+  padding: 10px 16px;
+  border: 1px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transform: translateY(-1px);
 }
 
 .card {

@@ -92,7 +92,7 @@ export default {
       this.$emit('save', bookmarkData)
     },
     confirmDelete() {
-      this.$emit('delete', this.bookmarkToDelete.id)
+      this.$emit('delete', this.bookmarkToDelete)
       this.closeDeleteConfirm()
     }
   }
@@ -202,12 +202,4 @@ export default {
   text-overflow: ellipsis;
 }
 
-.btn-danger {
-  background-color: var(--danger-color);
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: var(--danger-color-hover);
-}
 </style>

@@ -22,7 +22,7 @@
         :isCompact="isCompactMode"
         :isForceValid="isForceValid"
         @edit="$emit('edit', bookmark)"
-        @delete="$emit('delete', $event)"
+        @delete="$emit('delete', bookmark)"
         @search-tag="$emit('search-tag', $event)"
       />
     </div>

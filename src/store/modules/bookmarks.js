@@ -224,9 +224,9 @@ const actions = {
     }
   },
   
-  async deleteBookmark({ commit }, id) {
+  async deleteBookmark({ commit }, bookmark) {
     try {
-      const escapedId = escapeId(id);
+      const escapedId = escapeId(bookmark.id);
       const doc = await bookmarksDB.get(escapedId);
       await bookmarksDB.remove(doc);
       commit('deleteBookmark', escapedId);

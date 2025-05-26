@@ -139,12 +139,4 @@ export default {
   text-overflow: ellipsis;
 }
 
-.btn-danger {
-  background-color: var(--danger-color);
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: var(--danger-color-hover);
-}
 </style>

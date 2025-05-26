@@ -149,6 +149,18 @@ export default {
             const { initializeWebDAV } = await import('../../services/webdav')
             await initializeWebDAV(this.webdavConfig)
             console.log('WebDAV client initialized successfully')
+            
+            // 初始化成功后立即触发一次同步
+            try {
+              await this.manualSync()
+            } catch (syncError) {
+              console.error('Initial sync failed:', syncError)
+              this.webdavStatus = {
+                type: 'warning',
+                message: `Configuration saved and client initialized, but initial sync failed: ${syncError.message}`
+              }
+              throw syncError
+            }
           } catch (initError) {
             console.error('Failed to initialize WebDAV client:', initError)
             // 显示初始化错误，但不阻止保存配置

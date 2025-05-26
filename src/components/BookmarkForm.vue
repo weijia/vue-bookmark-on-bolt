@@ -378,6 +378,9 @@ input:focus, textarea:focus {
 
 .tag-option.selected {
   font-weight: 500;
+  background-color: var(--selected-tag-bg);
+  border-color: var(--selected-tag-border);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .tag-color {
