@@ -1,36 +1,42 @@
 {
   "manifest_version": 3,
-  "name": "Vue Bookmark on Bolt",
+  "name": "Vue Bookmark Manager",
   "version": "1.0.0",
-  "description": "A Vue.js based Edge extension",
+  "description": "A Vue.js based bookmark manager with WebDAV sync capabilities",
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
   },
   "background": {
     "service_worker": "background.js"
   },
   "options_page": "index.html",
   "permissions": [
+    "bookmarks",
     "storage",
-    "webRequest",
-    "tabs",
-    "scripting"
+    "alarms",
+    "tabs"
   ],
   "host_permissions": [
-    "https://miya.teracloud.jp/*",
     "https://*/*",
     "http://*/*"
   ],
   "web_accessible_resources": [{
-    "resources": ["*"],
-    "matches": ["<all_urls>"]
+    "resources": ["assets/*", "icons/*"],
+    "matches": ["<all_urls>"],
+    "use_dynamic_url": true
   }],
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://miya.teracloud.jp/ https://* http://*;"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://* http://*;"
   }
 }
