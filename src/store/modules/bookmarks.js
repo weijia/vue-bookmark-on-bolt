@@ -379,7 +379,7 @@ const actions = {
       let result = await storageService.importBookmarks(bookmarks);
 
       console.log('Import result:', result);
-      importedCount = result.updated + result.added;
+      importedCount = result.savedCount || 0;
       if(result.errors) errors.push(...result.errors);
 
       let allBookmarks = await storageService.getAllBookmarks();

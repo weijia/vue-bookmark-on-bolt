@@ -402,8 +402,25 @@ export default class StorageService {
   // 保存数据到PouchDB
   async #saveToPouchDB(pouchDb, docs) {
     try {
-      const result = await pouchDb.bulkDocs(docs);
-      return result;
+      // 分离有_rev和无_rev的文档
+      const docsWithRev = docs.filter(doc => doc._rev);
+      const docsWithoutRev = docs.filter(doc => !doc._rev);
+      
+      let results = [];
+      
+      // 处理有_rev的文档（使用new_edits: false避免本地无文档时报错）
+      if (docsWithRev.length > 0) {
+        const revResults = await pouchDb.bulkDocs(docsWithRev, { new_edits: false });
+        results = results.concat(revResults);
+      }
+      
+      // 处理无_rev的文档（正常bulkDocs调用）
+      if (docsWithoutRev.length > 0) {
+        const noRevResults = await pouchDb.bulkDocs(docsWithoutRev);
+        results = results.concat(noRevResults);
+      }
+      
+      return results;
     } catch (error) {
       console.error('Error saving data to pouchDb:', error);
       throw error;
