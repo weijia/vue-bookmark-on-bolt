@@ -2,11 +2,14 @@ import { mapState, mapActions } from 'vuex'
 import { syncService } from '../../services/syncService'
 import { escapeId } from '../../utils/idEscape'
 import PouchDbTideMarkSync from '../../services/PouchDbTideMarkSync'
+import versionInfo from '../../../version.json'
 
 export default {
   name: 'Settings',
   data() {
     return {
+      appVersion: versionInfo.version,
+      buildDate: versionInfo.buildDate,
       syncStatusInterval: null,
       syncStatus: {
         lastSync: null,

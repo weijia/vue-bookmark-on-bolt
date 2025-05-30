@@ -409,6 +409,7 @@ export default class StorageService {
       let results = [];
       
       // 处理有_rev的文档（使用new_edits: false避免本地无文档时报错）
+      // 据通义千问说，如果new_edits: false, 并不会影响冲突检测
       if (docsWithRev.length > 0) {
         const revResults = await pouchDb.bulkDocs(docsWithRev, { new_edits: false });
         results = results.concat(revResults);
