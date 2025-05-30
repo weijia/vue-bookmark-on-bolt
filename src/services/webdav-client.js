@@ -151,11 +151,19 @@ class WebDAVClient {
 
   // 获取文件内容
   async getFileContents(path, { format = 'text' } = {}) {
-    const response = await this.request('GET', path);
-    if (format === 'text') {
-      return response;
+    try {
+      const response = await this.request('GET', path);
+      if (format === 'text') {
+        return response;
+      }
+      return JSON.parse(response);
+    } catch (error) {
+      console.log('Error getting file contents:', path, error);
+      if (error.message.includes('404')) {
+        return [];
+      }
+      throw error;
     }
-    return JSON.parse(response);
   }
 
   // 保存文件内容
