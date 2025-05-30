@@ -235,18 +235,37 @@ const actions = {
       let importedCount = 0;
       const errors = [];
 
-      // 检查重复名称的tag
-      const uniqueTags = [];
+      // 检查导入列表内部的重复名称
+      const nameCount = new Map();
       tags.forEach(tag => {
-        const existingTag = state.tags.find(t => t.name === tag.name);
-        if (existingTag) {
+        nameCount.set(tag.name, (nameCount.get(tag.name) || 0) + 1);
+      });
+
+      // 检查与现有标签的重复名称
+      const existingNames = new Set(state.tags.map(t => t.name));
+      const uniqueTags = [];
+      
+      tags.forEach(tag => {
+        // 检查内部重复
+        if (nameCount.get(tag.name) > 1) {
           errors.push({
             tag,
-            reason: `Tag with name "${tag.name}" already exists`
+            reason: `Duplicate tag name "${tag.name}" in import list`
           });
-        } else {
-          uniqueTags.push(tag);
+          return;
         }
+        
+        // 检查与现有标签重复
+        if (existingNames.has(tag.name)) {
+          errors.push({
+            tag,
+            reason: `Tag with name "${tag.name}" already exists in your collection`
+          });
+          return;
+        }
+        
+        // 无重复则加入导入列表
+        uniqueTags.push(tag);
       });
 
       let storageService = new StorageService();
