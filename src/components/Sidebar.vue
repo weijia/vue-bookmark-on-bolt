@@ -134,9 +134,16 @@ export default {
         this.navigateTo('/', { ...this.$route.query, tag: undefined });
       } else {
         // 选中新标签
+        // console.log('Sidebar - tag clicked with id:', tagId)
         this.navigateTo('/', { ...this.$route.query, tag: tagId });
+        // console.log('Navigation triggered with tag:', tagId)
         // 点击未选中的标签，选中该标签
-        this.$emit('search-tag', tagId)
+        // console.log('Emitting search-tag event with tagId:', tagId)
+        // console.log('$root instance available:', !!this.$root)
+        // console.log('$root has $emit method:', !!this.$root.$emit)
+        this.$root.$emit('search-tag', tagId)
+        // console.log('Event emitted to $root')
+        // console.log('After emit - checking if listeners exist:', this.$root._events && this.$root._events['search-tag'])
       }
     }
   },

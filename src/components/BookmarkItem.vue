@@ -58,7 +58,7 @@
             class="tag"
             :style="{ backgroundColor: getTagColor(tagId) + '20', 
                       color: getTagColor(tagId) }"
-            @click="$emit('search-tag', tagId)"
+            @click="handleTagClick(tagId)"
           >
             {{ getTagName(tagId) }}
           </span>
@@ -236,6 +236,15 @@ export default {
     
     isMobile() {
       return window.innerWidth <= 768
+    },
+    
+    handleTagClick(tagId) {
+      // console.log('BookmarkItem - tag clicked:', tagId)
+      // console.log('Current component:', this)
+      // console.log('Parent component:', this.$parent)
+      // console.log('Root component:', this.$root)
+      this.$emit('search-tag', tagId)
+      // console.log('search-tag event emitted from BookmarkItem')
     }
   }
 }

@@ -4,7 +4,7 @@
       type="text"
       v-model="searchQuery"
       @input="onSearch"
-      placeholder="Search bookmarks..."
+      :placeholder="placeholderText"
       class="search-input"
     />
   </div>
@@ -12,6 +12,7 @@
 
 <script>
 import debounce from 'lodash.debounce'
+import { mapGetters } from 'vuex'
 
 export default {
   name: 'SearchBar',
@@ -24,7 +25,19 @@ export default {
   data() {
     return {
       searchQuery: this.value,
-      isExternalUpdate: false
+      isExternalUpdate: false,
+      isMobile: false,
+      selectedTag: null
+    }
+  },
+  computed: {
+          ...mapGetters({
+            tagById: 'tags/tagById'
+          }),
+    placeholderText() {
+      return this.isMobile && this.selectedTag 
+        ? `Tag: ${this.selectedTag.name}` 
+        : 'Search bookmarks...'
     }
   },
   watch: {
@@ -39,8 +52,15 @@ export default {
     }
   },
   created() {
+    // console.log('SearchBar created - initializing component')
     // Create debounced search function
     this.debouncedSearch = debounce(this.emitSearch, 300)
+    // console.log('Debounced search function created')
+    this.handleResize()
+    window.addEventListener('resize', this.handleResize)
+    // console.log('Registered resize event listener')
+    this.$root.$on('search-tag', this.onTagSelected)
+    // console.log('Registered search-tag event listener on $root')
   },
   methods: {
     onSearch() {
@@ -51,11 +71,33 @@ export default {
         this.$emit('input', this.searchQuery)
         this.$emit('search', this.searchQuery)
       }
+    },
+    handleResize() {
+      this.isMobile = window.innerWidth <= 768
+      if (!this.isMobile) {
+        this.selectedTag = null
+      }
+    },
+    onTagSelected(tagId) {
+      console.log('SearchBar received search-tag event with tagId:', tagId)
+      console.log('Current isMobile state:', this.isMobile)
+      if (this.isMobile) {
+        console.log('Processing tag selection for mobile view')
+        this.selectedTag = this.tagById(tagId)
+        console.log('Selected tag object:', this.selectedTag)
+        this.searchQuery = `#${this.selectedTag.name}`
+        console.log('Updated searchQuery:', this.searchQuery)
+        this.emitSearch()
+      } else {
+        console.log('Ignoring tag selection in desktop view')
+      }
     }
   },
   beforeDestroy() {
     // Cancel any pending debounced calls
     this.debouncedSearch.cancel()
+    window.removeEventListener('resize', this.handleResize)
+    this.$root.$off('search-tag', this.onTagSelected)
   }
 }
 </script>

@@ -69,25 +69,41 @@ const getters = {
     }
     
     return bookmarks.filter(bookmark => {
-      // 检查书签的基本属性是否匹配搜索查询
-      const matchesQuery = !searchQuery || 
-        bookmark.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bookmark.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (bookmark.description || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // 检查书签的标签是否匹配搜索查询
-      const matchesTagNames = !searchQuery || !bookmark.tagIds || bookmark.tagIds.length === 0 ? false :
-        bookmark.tagIds.some(tagId => {
-          const tag = rootGetters['tags/tagById'](tagId);
-          return tag && tag.name && tag.name.toLowerCase().includes(searchQuery.toLowerCase());
-        });
-        
       // 检查是否匹配选定的标签过滤器
       const matchesTags = !selectedTags || selectedTags.length === 0 || 
         selectedTags.some(tagId => bookmark.tagIds?bookmark.tagIds.includes(tagId):false);
       
-      // 如果匹配基本属性或标签名称，并且匹配标签过滤器，则返回true
-      return (matchesQuery || matchesTagNames) && matchesTags;
+      // 处理搜索查询
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        
+        // 处理#tag格式的搜索
+        if (query.startsWith('#')) {
+          const tagName = query.slice(1).trim();
+          if (!tagName) return matchesTags;
+          
+          // 只匹配标签名称
+          return matchesTags && bookmark.tagIds && bookmark.tagIds.some(tagId => {
+            const tag = rootGetters['tags/tagById'](tagId);
+            return tag && tag.name && tag.name.toLowerCase().includes(tagName);
+          });
+        }
+        
+        // 普通搜索：匹配标题、URL、描述或标签名称
+        const matchesBasic = 
+          bookmark.title.toLowerCase().includes(query) ||
+          bookmark.url.toLowerCase().includes(query) ||
+          (bookmark.description || '').toLowerCase().includes(query);
+          
+        const matchesTagNames = bookmark.tagIds && bookmark.tagIds.some(tagId => {
+          const tag = rootGetters['tags/tagById'](tagId);
+          return tag && tag.name && tag.name.toLowerCase().includes(query);
+        });
+        
+        return matchesTags && (matchesBasic || matchesTagNames);
+      }
+      
+      return matchesTags;
     });
   }
 };
