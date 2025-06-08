@@ -80,7 +80,10 @@ const getters = {
         // 处理#tag格式的搜索
         if (query.startsWith('#')) {
           const tagName = query.slice(1).trim();
-          if (!tagName) return matchesTags;
+          if (!tagName) {
+            // 当searchQuery为"#"时，返回没有tag的书签
+            return matchesTags && (!bookmark.tagIds || bookmark.tagIds.length === 0);
+          }
           
           // 只匹配标签名称
           return matchesTags && bookmark.tagIds && bookmark.tagIds.some(tagId => {
