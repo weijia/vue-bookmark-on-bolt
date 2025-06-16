@@ -10,7 +10,6 @@ export default defineConfig({
     vue2(),
     VitePWA({
       registerType: 'autoUpdate',
-      manifest: false,
       injectRegister: 'auto',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,gif}'],

@@ -126,20 +126,11 @@ export default {
       this.$store.commit('bookmarks/setSearchQuery', query);
     },
     handleTagSearch(tagId) {
-      // console.log('BookmarkManager handling tag search:', tagId);
-      // Clear search query first to avoid conflicting filters
+      // 清除搜索查询以避免过滤冲突
       this.$store.commit('bookmarks/setSearchQuery', '');
-      // Then set the selected tag
-      this.$store.commit('bookmarks/setSelectedTags', [tagId]);
-      this.$router.replace({
-        query: {
-          ...this.$route.query,
-          tag: tagId
-        }
-      });
-      // Also emit through $root for SearchBar to handle
+      
+      // 直接通过根组件触发标签搜索，让App.vue处理统一的标签选择逻辑
       if (this.$root) {
-        // console.log('Emitting search-tag via $root');
         this.$root.$emit('search-tag', tagId);
       }
     },

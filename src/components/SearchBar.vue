@@ -81,16 +81,12 @@ export default {
     onTagSelected(tagId) {
       console.log('SearchBar received search-tag event with tagId:', tagId)
       console.log('Current isMobile state:', this.isMobile)
-      if (this.isMobile) {
-        console.log('Processing tag selection for mobile view')
-        this.selectedTag = this.tagById(tagId)
-        console.log('Selected tag object:', this.selectedTag)
-        this.searchQuery = `#${this.selectedTag.name}`
-        console.log('Updated searchQuery:', this.searchQuery)
-        this.emitSearch()
-      } else {
-        console.log('Ignoring tag selection in desktop view')
-      }
+      console.log('Processing tag selection for mobile view')
+      this.selectedTag = this.tagById(tagId)
+      console.log('Selected tag object:', this.selectedTag)
+      this.searchQuery = `#${this.selectedTag.name}`
+      console.log('Updated searchQuery:', this.searchQuery)
+      this.emitSearch()
     }
   },
   beforeDestroy() {

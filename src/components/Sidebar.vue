@@ -29,7 +29,7 @@
         <h3 class="tag-header">Tags</h3>
         <ul class="tag-list">
           <li v-for="tag in sortedTags" :key="tag.id" class="tag-item">
-            <div class="tag-link" :class="{ 'active': currentTagId === tag.id }" @click="handleTagClick(tag.id)">
+            <div class="tag-link" :class="{ 'active': currentTagId === String(tag.id) }" @click="handleTagClick(tag.id)">
               <span class="tag-color" :style="{ backgroundColor: tag.color }"></span>
               <span class="tag-name">{{ tag.name }}</span>
               <span class="tag-count">{{ tag.count }}</span>
@@ -81,7 +81,8 @@ export default {
         })
     },
     currentTagId() {
-      return this.$route.query.tag
+      // 确保类型一致性，将路由查询参数转换为字符串
+      return this.$route.query.tag ? String(this.$route.query.tag) : null;
     }
   },
   methods: {
@@ -129,22 +130,8 @@ export default {
       }
     },
     handleTagClick(tagId) {
-      if (this.currentTagId === tagId) {
-        // 取消选中
-        this.navigateTo('/', { ...this.$route.query, tag: undefined });
-      } else {
-        // 选中新标签
-        // console.log('Sidebar - tag clicked with id:', tagId)
-        this.navigateTo('/', { ...this.$route.query, tag: tagId });
-        // console.log('Navigation triggered with tag:', tagId)
-        // 点击未选中的标签，选中该标签
-        // console.log('Emitting search-tag event with tagId:', tagId)
-        // console.log('$root instance available:', !!this.$root)
-        // console.log('$root has $emit method:', !!this.$root.$emit)
-        this.$root.$emit('search-tag', tagId)
-        // console.log('Event emitted to $root')
-        // console.log('After emit - checking if listeners exist:', this.$root._events && this.$root._events['search-tag'])
-      }
+      // 直接发出事件，让App.vue处理标签选择逻辑
+      this.$root.$emit('search-tag', tagId);
     }
   },
   created() {

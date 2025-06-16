@@ -64,14 +64,21 @@ const getters = {
     const searchQuery = state.searchQuery;
     const selectedTags = state.selectedTags;
     
+    // 如果没有过滤条件，返回所有书签
     if (!searchQuery && (!selectedTags || selectedTags.length === 0)) {
       return bookmarks;
     }
     
     return bookmarks.filter(bookmark => {
-      // 检查是否匹配选定的标签过滤器
+      // 安全地获取书签的标签ID数组
+      const bookmarkTagIds = bookmark.tagIds || [];
+      
+      // 检查是否匹配选定的标签过滤器（使用OR逻辑）
       const matchesTags = !selectedTags || selectedTags.length === 0 || 
-        selectedTags.some(tagId => bookmark.tagIds?bookmark.tagIds.includes(tagId):false);
+        selectedTags.some(tagId => bookmarkTagIds.includes(tagId));
+      
+      // 如果不匹配标签过滤器，直接返回false
+      if (!matchesTags) return false;
       
       // 处理搜索查询
       if (searchQuery) {
@@ -82,11 +89,11 @@ const getters = {
           const tagName = query.slice(1).trim();
           if (!tagName) {
             // 当searchQuery为"#"时，返回没有tag的书签
-            return matchesTags && (!bookmark.tagIds || bookmark.tagIds.length === 0);
+            return bookmarkTagIds.length === 0;
           }
           
           // 只匹配标签名称
-          return matchesTags && bookmark.tagIds && bookmark.tagIds.some(tagId => {
+          return bookmarkTagIds.some(tagId => {
             const tag = rootGetters['tags/tagById'](tagId);
             return tag && tag.name && tag.name.toLowerCase().includes(tagName);
           });
@@ -94,19 +101,20 @@ const getters = {
         
         // 普通搜索：匹配标题、URL、描述或标签名称
         const matchesBasic = 
-          bookmark.title.toLowerCase().includes(query) ||
-          bookmark.url.toLowerCase().includes(query) ||
+          (bookmark.title || '').toLowerCase().includes(query) ||
+          (bookmark.url || '').toLowerCase().includes(query) ||
           (bookmark.description || '').toLowerCase().includes(query);
           
-        const matchesTagNames = bookmark.tagIds && bookmark.tagIds.some(tagId => {
+        const matchesTagNames = bookmarkTagIds.some(tagId => {
           const tag = rootGetters['tags/tagById'](tagId);
           return tag && tag.name && tag.name.toLowerCase().includes(query);
         });
         
-        return matchesTags && (matchesBasic || matchesTagNames);
+        return matchesBasic || matchesTagNames;
       }
       
-      return matchesTags;
+      // 如果没有搜索查询，只要匹配标签过滤器就返回true
+      return true;
     });
   }
 };
@@ -463,7 +471,8 @@ const mutations = {
   },
   
   setSelectedTags(state, tags) {
-    state.selectedTags = tags;
+    // 确保所有标签ID都是字符串类型
+    state.selectedTags = tags.map(tag => String(tag));
   }
 };
 

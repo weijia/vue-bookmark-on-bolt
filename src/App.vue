@@ -87,28 +87,40 @@ export default {
       localStorage.setItem('darkMode', this.isDarkMode);
       document.documentElement.classList.toggle('dark-theme', this.isDarkMode);
     },
-    handleTagSearch(tagId) {
-      const currentTags = this.$store.state.bookmarks.selectedTags;
-      // If clicked tag is already selected, deselect it
-      if (currentTags.includes(tagId)) {
-        this.$store.commit('bookmarks/setSelectedTags', []);
-        this.$router.replace({
-          query: {
-            ...this.$route.query,
-            tag: undefined
-          }
-        });
-      } else {
-        // Otherwise select this tag
-        this.$store.commit('bookmarks/setSelectedTags', [tagId]);
-        if (this.$route.query.tag !== tagId) {
-          this.$router.replace({
-            query: {
-              ...this.$route.query,
-              tag: tagId
-            }
-          });
+    async handleTagSearch(tagId) {
+      try {
+        if (!tagId) {
+          console.warn('handleTagSearch called with invalid tagId');
+          return;
         }
+
+        // 确保tagId是字符串类型
+        const tagIdStr = String(tagId);
+        
+        const currentTags = this.$store.state.bookmarks.selectedTags;
+        // 使用字符串比较
+        const isTagSelected = currentTags.some(tag => String(tag) === tagIdStr);
+        
+        // 准备新的路由查询参数
+        const newQuery = { ...this.$route.query };
+        
+        if (isTagSelected) {
+          // 取消选中标签
+          this.$store.commit('bookmarks/setSelectedTags', []);
+          delete newQuery.tag;
+        } else {
+          // 选中新标签
+          this.$store.commit('bookmarks/setSelectedTags', [tagIdStr]);
+          newQuery.tag = tagIdStr;
+        }
+
+        // 更新路由（如果查询参数有变化）
+        if (JSON.stringify(this.$route.query) !== JSON.stringify(newQuery)) {
+          await this.$router.replace({ query: newQuery });
+        }
+      } catch (error) {
+        console.error('Error handling tag search:', error);
+        // 可以在这里添加错误通知逻辑
       }
     },
     setSearchQuery(query) {
