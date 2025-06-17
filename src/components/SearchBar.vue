@@ -45,7 +45,7 @@
 
 <script>
 import debounce from 'lodash.debounce'
-import { mapGetters } from 'vuex'
+import { mapGetters, mapMutations } from 'vuex'
 
 export default {
   name: 'SearchBar',
@@ -130,6 +130,8 @@ export default {
       // 移除标签，保留非标签文本
       this.searchQuery = this.nonTagText.trim()
       this.nonTagText = ''
+      // 清空 selectedTags
+      this.setSelectedTags([])
       this.emitSearch()
       this.$nextTick(() => {
         this.$refs.searchInput?.focus()
@@ -141,10 +143,15 @@ export default {
         this.selectedTag = null
       }
     },
+    ...mapMutations({
+      setSelectedTags: 'bookmarks/SET_SELECTED_TAGS'
+    }),
     onTagSelected(tagId) {
       this.selectedTag = this.tagById(tagId)
       this.searchQuery = `#${this.selectedTag.name}`
       this.nonTagText = ''
+      // 更新 selectedTags
+      this.setSelectedTags([tagId])
       this.emitSearch()
     },
     handleTagClick() {

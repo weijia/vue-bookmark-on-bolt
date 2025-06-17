@@ -86,17 +86,45 @@ const getters = {
         
         // 处理#tag格式的搜索
         if (query.startsWith('#')) {
-          const tagName = query.slice(1).trim();
-          if (!tagName) {
-            // 当searchQuery为"#"时，返回没有tag的书签
-            return bookmarkTagIds.length === 0;
+          // 检查是否是组合查询（#tag text）
+          const parts = query.split(' ');
+          const tagPart = parts[0].slice(1).trim(); // 去掉#号
+          const textPart = parts.slice(1).join(' ').trim();
+          
+          // 如果只有标签部分
+          if (!textPart) {
+            if (!tagPart) {
+              // 当searchQuery为"#"时，返回没有tag的书签
+              return bookmarkTagIds.length === 0;
+            }
+            
+            // 只匹配标签名称
+            return bookmarkTagIds.some(tagId => {
+              const tag = rootGetters['tags/tagById'](tagId);
+              return tag && tag.name && tag.name.toLowerCase().includes(tagPart);
+            });
           }
           
-          // 只匹配标签名称
-          return bookmarkTagIds.some(tagId => {
+          // 处理组合查询：同时匹配标签和文本
+          const matchesTagPart = bookmarkTagIds.some(tagId => {
             const tag = rootGetters['tags/tagById'](tagId);
-            return tag && tag.name && tag.name.toLowerCase().includes(tagName);
+            return tag && tag.name && tag.name.toLowerCase().includes(tagPart);
           });
+          
+          // 如果不匹配标签部分，直接返回false
+          if (!matchesTagPart) return false;
+          
+          // 匹配文本部分
+          const matchesTextPart = 
+            (bookmark.title || '').toLowerCase().includes(textPart) ||
+            (bookmark.url || '').toLowerCase().includes(textPart) ||
+            (bookmark.description || '').toLowerCase().includes(textPart) ||
+            bookmarkTagIds.some(tagId => {
+              const tag = rootGetters['tags/tagById'](tagId);
+              return tag && tag.name && tag.name.toLowerCase().includes(textPart);
+            });
+            
+          return matchesTextPart;
         }
         
         // 普通搜索：匹配标题、URL、描述或标签名称
