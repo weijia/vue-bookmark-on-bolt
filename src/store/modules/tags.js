@@ -28,6 +28,10 @@ const getters = {
     // const escapedId = escapeId(id)
     return state.tags.find(tag => tag.id === id);
   },
+  
+  tagByName: state => name => {
+    return state.tags.find(tag => tag.name.toLowerCase() === name.toLowerCase());
+  },
   tagsInFilteredBookmarks: (state, getters, rootState, rootGetters) => {
     // 获取当前过滤出的书签
     const filteredBookmarks = rootGetters['bookmarks/filteredBookmarks'];
