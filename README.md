@@ -18,7 +18,7 @@ set USERNAME=weijia
 set DAV_USERNAME=richard
 set PASSWORD=xxx
 set URL=https://dav.jianguoyun.com/dav/
-set ROOT=online/obsidian-notes
+set ROOT=online/vue-bookmark-on-bolt
 
 # Set WebDAV secrets (replace with your actual values)
 gh secret set WEBDAV_URL --repo %USERNAME%/obsidian-notes --body %URL%
