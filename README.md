@@ -14,10 +14,16 @@ Install [GitHub CLI](https://cli.github.com/) and run the following commands to 
 # Login to GitHub CLI
 gh auth login
 
+set USERNAME=weijia
+set DAV_USERNAME=richard
+set PASSWORD=xxx
+set URL=https://dav.jianguoyun.com/dav/
+set ROOT=online/obsidian-notes
+
 # Set WebDAV secrets (replace with your actual values)
-gh secret set WEBDAV_URL --repo username/vue-bookmark-on-bolt --body "https://your-webdav-server.com"
-gh secret set WEBDAV_USERNAME --repo username/vue-bookmark-on-bolt --body "your-username"
-gh secret set WEBDAV_PASSWORD --repo username/vue-bookmark-on-bolt --body "your-password"
+gh secret set WEBDAV_URL --repo %USERNAME%/obsidian-notes --body %URL%
+gh secret set WEBDAV_USERNAME --repo %USERNAME%/obsidian-notes --body %DAV_USERNAME%
+gh secret set WEBDAV_PASSWORD --repo %USERNAME%/obsidian-notes --body %PASSWORD%
 ```
 
 ### Automatic Deployment
